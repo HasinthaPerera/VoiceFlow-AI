@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { Mail, Lock, LogIn } from 'lucide-react';
 import { motion } from 'framer-motion';
 import toast from 'react-hot-toast';
+import { authApi, setToken, setUser } from '../api';
 
 export default function Login() {
   const [email, setEmail] = useState('');
@@ -10,16 +11,20 @@ export default function Login() {
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
 
-  const handleLogin = (e) => {
+  const handleLogin = async (e) => {
     e.preventDefault();
     setIsLoading(true);
-    
-    // Mock login
-    setTimeout(() => {
-      setIsLoading(false);
+    try {
+      const data = await authApi.login(email, password);
+      setToken(data.access_token);
+      setUser(data.user);
       toast.success('Welcome back!');
       navigate('/dashboard/generate');
-    }, 1500);
+    } catch (err) {
+      toast.error(err.message);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (

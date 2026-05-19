@@ -1,42 +1,72 @@
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Mic2, History, TrendingUp, Clock } from 'lucide-react';
+import { Mic2, History, TrendingUp, Clock, Loader2 } from 'lucide-react';
+import { userApi, historyApi, getUser } from '../api';
 
 export default function Dashboard() {
-  const stats = [
-    { label: 'Characters Used', value: '12,450', total: '100,000', icon: TrendingUp, color: 'text-blue-500' },
-    { label: 'Voices Generated', value: '34', icon: Mic2, color: 'text-primary' },
-    { label: 'Hours Saved', value: '12.5', icon: Clock, color: 'text-green-500' },
-  ];
+  const [stats, setStats] = useState(null);
+  const [recentActivity, setRecentActivity] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const user = getUser();
 
-  const recentActivity = [
-    { title: 'Welcome Audio', language: 'English', voice: 'Natural AI', time: '2 hours ago' },
-    { title: 'Podcast Intro', language: 'Sinhala', voice: 'Male', time: '1 day ago' },
-    { title: 'Explainer Video', language: 'Tamil', voice: 'Female', time: '3 days ago' },
-  ];
+  useEffect(() => {
+    const load = async () => {
+      try {
+        const [statsData, histData] = await Promise.all([
+          userApi.getStats(),
+          historyApi.getAll(''),
+        ]);
+        setStats(statsData);
+        setRecentActivity((histData.items || []).slice(0, 3));
+      } catch (_) {
+        // Backend not running - use fallback zeros
+        setStats({ characters_used: 0, character_limit: 100000, voices_generated: 0, hours_saved: 0 });
+      } finally {
+        setLoading(false);
+      }
+    };
+    load();
+  }, []);
+
+  const statCards = stats
+    ? [
+        { label: 'Characters Used', value: stats.characters_used.toLocaleString(), total: stats.character_limit.toLocaleString(), icon: TrendingUp, color: 'text-blue-500' },
+        { label: 'Voices Generated', value: stats.voices_generated, icon: Mic2, color: 'text-primary' },
+        { label: 'Hours Saved', value: stats.hours_saved, icon: Clock, color: 'text-green-500' },
+      ]
+    : [];
 
   return (
     <div className="space-y-8">
       <div>
         <h1 className="text-3xl font-bold text-white mb-2">Dashboard</h1>
-        <p className="text-gray-400">Welcome back! Here's an overview of your usage.</p>
+        <p className="text-gray-400">
+          Welcome back{user?.name ? `, ${user.name}` : ''}! Here's an overview of your usage.
+        </p>
       </div>
 
       {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {stats.map((stat, idx) => (
-          <div key={idx} className="glass-panel p-6">
-            <div className="flex justify-between items-start mb-4">
-              <div className={`p-3 rounded-xl bg-white/5 ${stat.color}`}>
-                <stat.icon size={24} />
+      {loading ? (
+        <div className="flex items-center text-gray-400 gap-3">
+          <Loader2 className="animate-spin" size={20} /> Loading stats...
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {statCards.map((stat, idx) => (
+            <div key={idx} className="glass-panel p-6">
+              <div className="flex justify-between items-start mb-4">
+                <div className={`p-3 rounded-xl bg-white/5 ${stat.color}`}>
+                  <stat.icon size={24} />
+                </div>
               </div>
+              <h3 className="text-3xl font-bold text-white mb-1">{stat.value}</h3>
+              <p className="text-gray-400 font-medium">
+                {stat.label} {stat.total && <span className="text-gray-500 text-sm">/ {stat.total}</span>}
+              </p>
             </div>
-            <h3 className="text-3xl font-bold text-white mb-1">{stat.value}</h3>
-            <p className="text-gray-400 font-medium">
-              {stat.label} {stat.total && <span className="text-gray-500 text-sm">/ {stat.total}</span>}
-            </p>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         {/* Quick Actions */}
@@ -73,20 +103,26 @@ export default function Dashboard() {
             </Link>
           </div>
           <div className="space-y-4">
-            {recentActivity.map((activity, idx) => (
-              <div key={idx} className="flex items-center justify-between p-3 rounded-lg hover:bg-white/5 transition-colors">
-                <div className="flex items-center space-x-3">
-                  <div className="w-10 h-10 rounded-full bg-surface border border-white/10 flex items-center justify-center text-gray-400">
-                    <Mic2 size={16} />
+            {recentActivity.length === 0 ? (
+              <p className="text-gray-500 text-sm">No generations yet. Try generating your first voice!</p>
+            ) : (
+              recentActivity.map((item) => (
+                <div key={item.id} className="flex items-center justify-between p-3 rounded-lg hover:bg-white/5 transition-colors">
+                  <div className="flex items-center space-x-3">
+                    <div className="w-10 h-10 rounded-full bg-surface border border-white/10 flex items-center justify-center text-gray-400">
+                      <Mic2 size={16} />
+                    </div>
+                    <div>
+                      <h4 className="text-white font-medium text-sm">{item.title}</h4>
+                      <p className="text-gray-500 text-xs capitalize">{item.voice} • {item.language}</p>
+                    </div>
                   </div>
-                  <div>
-                    <h4 className="text-white font-medium text-sm">{activity.title}</h4>
-                    <p className="text-gray-500 text-xs">{activity.voice} • {activity.language}</p>
-                  </div>
+                  <span className="text-gray-500 text-xs">
+                    {new Date(item.created_at).toLocaleDateString()}
+                  </span>
                 </div>
-                <span className="text-gray-500 text-xs">{activity.time}</span>
-              </div>
-            ))}
+              ))
+            )}
           </div>
         </div>
       </div>

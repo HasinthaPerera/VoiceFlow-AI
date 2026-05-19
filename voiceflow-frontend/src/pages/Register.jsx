@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { Mail, Lock, User, UserPlus } from 'lucide-react';
 import { motion } from 'framer-motion';
 import toast from 'react-hot-toast';
+import { authApi, setToken, setUser } from '../api';
 
 export default function Register() {
   const [name, setName] = useState('');
@@ -11,16 +12,20 @@ export default function Register() {
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
 
-  const handleRegister = (e) => {
+  const handleRegister = async (e) => {
     e.preventDefault();
     setIsLoading(true);
-    
-    // Mock register
-    setTimeout(() => {
-      setIsLoading(false);
+    try {
+      const data = await authApi.register(name, email, password);
+      setToken(data.access_token);
+      setUser(data.user);
       toast.success('Account created successfully!');
       navigate('/dashboard/generate');
-    }, 1500);
+    } catch (err) {
+      toast.error(err.message);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
