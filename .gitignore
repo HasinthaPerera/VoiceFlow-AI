@@ -1,3 +1,4 @@
+# ─── Frontend (Node / Vite) ───────────────────────────────
 # Logs
 logs
 *.log
@@ -22,3 +23,31 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# ─── Python / FastAPI Backend ─────────────────────────────
+# Virtual environment — never commit this
+venv/
+.venv/
+env/
+
+# Python cache
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+
+# Environment secrets — NEVER commit .env
+.env
+!.env.example
+
+# SQLite database (auto-created at runtime)
+*.db
+*.sqlite3
+
+# Generated audio files (created at runtime)
+voiceflow-backend/generated_audio/
+
+# Pytest / coverage
+.pytest_cache/
+.coverage
+htmlcov/

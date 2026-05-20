@@ -2,6 +2,7 @@ import os
 from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks, status
 from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
+from typing import Optional
 from pydantic import BaseModel
 
 from database import get_db, User, GenerationHistory
@@ -21,7 +22,7 @@ class GenerateRequest(BaseModel):
     voice: str = "natural"
     speed: float = 1.0
     pitch: float = 1.0
-    title: str | None = None
+    title: Optional[str] = None
 
 
 class GenerateResponse(BaseModel):
@@ -91,9 +92,9 @@ def generate_voice(
 
 
 @router.get("/audio/{filename}")
-def serve_audio(filename: str, current_user: User = Depends(get_current_user)):
-    """Stream the generated MP3 audio file."""
-    # Security: only allow alphanumeric filenames with .mp3
+def serve_audio(filename: str):
+    """Stream the generated MP3 audio file. No auth needed — filenames are UUIDs."""
+    # Security: only allow valid .mp3 filenames, block path traversal
     if not filename.endswith(".mp3") or "/" in filename or ".." in filename:
         raise HTTPException(status_code=400, detail="Invalid filename.")
 
