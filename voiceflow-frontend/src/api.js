@@ -1,7 +1,7 @@
 // Central API service for VoiceFlow AI
 // All backend calls go through this file
 
-const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+export const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080';
 
 // ─── Token Helpers ────────────────────────────────────────────────────────────
 
@@ -83,4 +83,19 @@ export const historyApi = {
 
 export const userApi = {
   getStats: () => request('/api/user/stats'),
+};
+
+// ─── Admin API ────────────────────────────────────────────────────────────────
+
+export const adminApi = {
+  getStats: () => request('/api/admin/stats'),
+  getUsers: () => request('/api/admin/users'),
+  toggleAdmin: (userId) =>
+    request(`/api/admin/users/${userId}/toggle-admin`, {
+      method: 'PUT',
+    }),
+  deleteUser: (userId) =>
+    request(`/api/admin/users/${userId}`, {
+      method: 'DELETE',
+    }),
 };

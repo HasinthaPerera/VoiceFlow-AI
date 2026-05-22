@@ -5,7 +5,7 @@ import os
 from dotenv import load_dotenv
 
 from database import init_db
-from routers import auth_router, tts_router, history_router, user_router
+from routers import auth_router, tts_router, history_router, user_router, admin_router
 
 load_dotenv()
 
@@ -13,8 +13,8 @@ load_dotenv()
 async def lifespan(app: FastAPI):
     # Startup
     init_db()
-    print("✅ Database initialized")
-    print("🚀 VoiceFlow AI Backend is running!")
+    print("[OK] Database initialized")
+    print("[OK] VoiceFlow AI Backend is running!")
     yield
     # Shutdown (nothing needed)
 
@@ -40,6 +40,7 @@ app.include_router(auth_router.router)
 app.include_router(tts_router.router)
 app.include_router(history_router.router)
 app.include_router(user_router.router)
+app.include_router(admin_router.router)
 
 # ─── Health check ─────────────────────────────────────────────────────────────
 @app.get("/", tags=["Health"])

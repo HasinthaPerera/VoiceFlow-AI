@@ -1,14 +1,18 @@
 import { Outlet, NavLink, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, Mic2, History, Settings, LogOut, Menu, X, User } from 'lucide-react';
+import { LayoutDashboard, Mic2, History, Settings, LogOut, Menu, X, User, Shield } from 'lucide-react';
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
+import { getUser } from '../api';
 
 export default function DashboardLayout() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const navigate = useNavigate();
+  const user = getUser();
 
   const handleLogout = () => {
+    localStorage.removeItem('voiceflow_token');
+    localStorage.removeItem('voiceflow_user');
     toast.success('Logged out successfully');
     navigate('/');
   };
@@ -19,6 +23,10 @@ export default function DashboardLayout() {
     { path: '/dashboard/history', icon: History, label: 'History' },
     { path: '/dashboard/settings', icon: Settings, label: 'Settings' },
   ];
+
+  if (user?.is_admin) {
+    navItems.push({ path: '/dashboard/admin', icon: Shield, label: 'Admin Panel' });
+  }
 
   const Sidebar = () => (
     <div className="flex flex-col h-full bg-surface border-r border-white/5 w-64">
@@ -119,7 +127,7 @@ export default function DashboardLayout() {
               <span className="text-primary font-bold ml-1">100,000</span>
             </div>
             <div className="w-9 h-9 rounded-full bg-gradient-to-r from-purple-500 to-indigo-500 flex items-center justify-center text-white font-bold shadow-lg ring-2 ring-background">
-              U
+              {user?.name ? user.name[0].toUpperCase() : 'U'}
             </div>
           </div>
         </header>

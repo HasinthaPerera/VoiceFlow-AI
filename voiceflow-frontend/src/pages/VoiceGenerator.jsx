@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { Play, Square, Download, Settings2, Loader2, Copy, Check } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { ttsApi } from '../api';
+import { ttsApi, BASE_URL } from '../api';
 
 export default function VoiceGenerator() {
   const [text, setText] = useState('');
@@ -60,7 +60,7 @@ export default function VoiceGenerator() {
     try {
       const data = await ttsApi.generate(text, language, voice, speed, pitch);
       // data.audio_url is a relative path like /api/tts/audio/<filename>
-      const fullUrl = `http://localhost:8000${data.audio_url}`;
+      const fullUrl = `${BASE_URL}${data.audio_url}`;
       setAudioUrl(fullUrl);
       toast.success('Voice generated successfully!');
     } catch (err) {

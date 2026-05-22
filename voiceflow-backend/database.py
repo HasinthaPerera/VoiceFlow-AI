@@ -1,4 +1,4 @@
-from sqlalchemy import create_engine, Column, Integer, String, DateTime, Float, Text
+from sqlalchemy import create_engine, Column, Integer, String, DateTime, Float, Text, Boolean, text
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 from datetime import datetime
@@ -30,7 +30,10 @@ class User(Base):
     # Usage tracking
     characters_used = Column(Integer, default=0)
     voices_generated = Column(Integer, default=0)
+    is_admin = Column(Boolean, default=False)
 
+
+# ─── Generation History ─────────────────────────────────────────────────────────
 
 class GenerationHistory(Base):
     __tablename__ = "generation_history"
@@ -61,3 +64,12 @@ def get_db():
 
 def init_db():
     Base.metadata.create_all(bind=engine)
+    # Check if 'is_admin' column exists in 'users' table, and add it if not
+    from sqlalchemy import inspect
+    inspector = inspect(engine)
+    if inspector.has_table("users"):
+        columns = [c['name'] for c in inspector.get_columns('users')]
+        if 'is_admin' not in columns:
+            with engine.begin() as conn:
+                conn.execute(text("ALTER TABLE users ADD COLUMN is_admin BOOLEAN DEFAULT FALSE"))
+                print("[OK] Migrated users table: added is_admin column")

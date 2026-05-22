@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Play, Download, Search, Calendar, Clock, MoreVertical, Trash2, Loader2 } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { historyApi, ttsApi } from '../api';
+import { historyApi, ttsApi, BASE_URL } from '../api';
 
 export default function History() {
   const [historyData, setHistoryData] = useState([]);
@@ -46,7 +46,7 @@ export default function History() {
 
   const handlePlay = (item) => {
     if (!item.audio_url) return;
-    const fullUrl = `http://localhost:8000${item.audio_url}`;
+    const fullUrl = `${BASE_URL}${item.audio_url}`;
     if (playingId === item.id) {
       // Pause
       if (audioRefs[item.id]) audioRefs[item.id].pause();
@@ -148,7 +148,7 @@ export default function History() {
                         </div>
                         {item.audio_url && (
                           <a
-                            href={`http://localhost:8000${item.audio_url}`}
+                            href={`${BASE_URL}${item.audio_url}`}
                             download={`voiceflow_${item.id}.mp3`}
                             className="p-2 text-gray-400 hover:text-primary transition-colors"
                             title="Download"

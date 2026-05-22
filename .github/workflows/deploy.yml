@@ -39,6 +39,8 @@ jobs:
       - name: Build
         run: npm run build
         working-directory: voiceflow-frontend
+        env:
+          VITE_API_URL: ${{ secrets.VITE_API_URL || vars.VITE_API_URL }}
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3

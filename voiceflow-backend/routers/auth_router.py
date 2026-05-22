@@ -44,10 +44,14 @@ def register(payload: RegisterRequest, db: Session = Depends(get_db)):
             detail="An account with this email already exists.",
         )
 
+    # Auto-promote the first user in the database to admin
+    is_first_user = db.query(User).first() is None
+
     user = User(
         name=payload.name,
         email=payload.email,
         hashed_password=hash_password(payload.password),
+        is_admin=is_first_user,
     )
     db.add(user)
     db.commit()
@@ -60,7 +64,7 @@ def register(payload: RegisterRequest, db: Session = Depends(get_db)):
 
     return AuthResponse(
         access_token=token,
-        user={"id": user.id, "name": user.name, "email": user.email},
+        user={"id": user.id, "name": user.name, "email": user.email, "is_admin": user.is_admin},
     )
 
 
@@ -80,7 +84,7 @@ def login(payload: LoginRequest, db: Session = Depends(get_db)):
 
     return AuthResponse(
         access_token=token,
-        user={"id": user.id, "name": user.name, "email": user.email},
+        user={"id": user.id, "name": user.name, "email": user.email, "is_admin": user.is_admin},
     )
 
 
@@ -93,4 +97,5 @@ def get_me(current_user: User = Depends(get_current_user)):
         "characters_used": current_user.characters_used,
         "voices_generated": current_user.voices_generated,
         "created_at": current_user.created_at,
+        "is_admin": current_user.is_admin,
     }

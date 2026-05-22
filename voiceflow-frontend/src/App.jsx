@@ -14,6 +14,7 @@ import Dashboard from './pages/Dashboard';
 import VoiceGenerator from './pages/VoiceGenerator';
 import History from './pages/History';
 import Settings from './pages/Settings';
+import AdminPanel from './pages/AdminPanel';
 
 function App() {
   return (
@@ -39,6 +40,7 @@ function App() {
           <Route path="generate" element={<VoiceGenerator />} />
           <Route path="history" element={<History />} />
           <Route path="settings" element={<Settings />} />
+          <Route path="admin" element={<AdminPanel />} />
         </Route>
       </Routes>
     </Router>

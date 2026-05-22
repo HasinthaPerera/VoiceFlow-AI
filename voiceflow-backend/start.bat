@@ -19,7 +19,7 @@ pip install -r requirements.txt --quiet
 
 :: Start the server
 echo.
-echo ✅ Starting VoiceFlow AI Backend on http://localhost:8000
-echo ✅ API Docs available at http://localhost:8000/docs
+echo ✅ Starting VoiceFlow AI Backend on http://localhost:8080
+echo ✅ API Docs available at http://localhost:8080/docs
 echo.
-uvicorn main:app --reload --host 0.0.0.0 --port 8000
+uvicorn main:app --reload --host 0.0.0.0 --port 8080
