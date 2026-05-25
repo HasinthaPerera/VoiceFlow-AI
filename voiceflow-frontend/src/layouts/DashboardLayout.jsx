@@ -1,14 +1,22 @@
 import { Outlet, NavLink, useNavigate } from 'react-router-dom';
 import { LayoutDashboard, Mic2, History, Settings, LogOut, Menu, X, User, Shield } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
 import { getUser } from '../api';
 
 export default function DashboardLayout() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [user, setUser] = useState(getUser());
   const navigate = useNavigate();
-  const user = getUser();
+
+  useEffect(() => {
+    const handleUserUpdate = () => {
+      setUser(getUser());
+    };
+    window.addEventListener('user_updated', handleUserUpdate);
+    return () => window.removeEventListener('user_updated', handleUserUpdate);
+  }, []);
 
   const handleLogout = () => {
     localStorage.removeItem('voiceflow_token');

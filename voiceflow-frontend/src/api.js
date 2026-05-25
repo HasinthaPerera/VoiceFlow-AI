@@ -13,7 +13,10 @@ export const getUser = () => {
   const raw = localStorage.getItem('voiceflow_user');
   return raw ? JSON.parse(raw) : null;
 };
-export const setUser = (user) => localStorage.setItem('voiceflow_user', JSON.stringify(user));
+export const setUser = (user) => {
+  localStorage.setItem('voiceflow_user', JSON.stringify(user));
+  window.dispatchEvent(new Event('user_updated'));
+};
 export const removeUser = () => localStorage.removeItem('voiceflow_user');
 
 // ─── Core Fetch Wrapper ───────────────────────────────────────────────────────
@@ -83,6 +86,20 @@ export const historyApi = {
 
 export const userApi = {
   getStats: () => request('/api/user/stats'),
+  updateProfile: (name) =>
+    request('/api/user/profile', {
+      method: 'PUT',
+      body: JSON.stringify({ name }),
+    }),
+  updatePassword: (current_password, new_password) =>
+    request('/api/user/password', {
+      method: 'PUT',
+      body: JSON.stringify({ current_password, new_password }),
+    }),
+  deleteAccount: () =>
+    request('/api/user/me', {
+      method: 'DELETE',
+    }),
 };
 
 // ─── Admin API ────────────────────────────────────────────────────────────────
