@@ -1,8 +1,33 @@
-import { Outlet, Link } from 'react-router-dom';
-import { Mic2 } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Outlet, Link, useNavigate } from 'react-router-dom';
+import { Mic2, LogOut, LayoutDashboard, Shield } from 'lucide-react';
 import { motion } from 'framer-motion';
+import toast from 'react-hot-toast';
+import { getUser } from '../api';
 
 export default function MainLayout() {
+  const [user, setUser] = useState(getUser());
+  const [isAdminSession, setIsAdminSession] = useState(localStorage.getItem('voiceflow_admin_session') === 'true');
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    const handleUserUpdate = () => {
+      setUser(getUser());
+      setIsAdminSession(localStorage.getItem('voiceflow_admin_session') === 'true');
+    };
+    window.addEventListener('user_updated', handleUserUpdate);
+    return () => window.removeEventListener('user_updated', handleUserUpdate);
+  }, []);
+
+  const handleLogout = () => {
+    localStorage.removeItem('voiceflow_token');
+    localStorage.removeItem('voiceflow_user');
+    localStorage.removeItem('voiceflow_admin_session');
+    window.dispatchEvent(new Event('user_updated'));
+    toast.success('Logged out successfully');
+    navigate('/');
+  };
+
   return (
     <div className="min-h-screen flex flex-col relative overflow-hidden">
       {/* Background Gradients */}
@@ -24,12 +49,45 @@ export default function MainLayout() {
             </Link>
             
             <div className="flex items-center space-x-4">
-              <Link to="/login" className="text-gray-300 hover:text-white transition-colors font-medium">
-                Log in
-              </Link>
-              <Link to="/register" className="btn-primary">
-                Get Started
-              </Link>
+              {user ? (
+                <>
+                  <Link 
+                    to="/dashboard/generate" 
+                    className="flex items-center space-x-1.5 text-gray-300 hover:text-white transition-colors font-medium text-sm"
+                  >
+                    <LayoutDashboard size={16} />
+                    <span>Dashboard</span>
+                  </Link>
+                  {isAdminSession && (
+                    <Link 
+                      to="/admin" 
+                      className="flex items-center space-x-1.5 text-primary hover:text-primary/80 transition-colors font-semibold text-sm"
+                    >
+                      <Shield size={16} />
+                      <span>Admin Panel</span>
+                    </Link>
+                  )}
+                  <button 
+                    onClick={handleLogout}
+                    className="flex items-center space-x-1.5 px-4 py-2 bg-red-500/10 hover:bg-red-500/20 text-red-500 rounded-full transition-colors duration-300 font-medium text-xs sm:text-sm"
+                  >
+                    <LogOut size={14} />
+                    <span>Logout</span>
+                  </button>
+                </>
+              ) : (
+                <>
+                  <Link to="/admin/login" className="text-primary hover:text-primary/80 transition-colors font-semibold text-sm mr-2">
+                    Admin Portal
+                  </Link>
+                  <Link to="/login" className="text-gray-300 hover:text-white transition-colors font-medium text-sm">
+                    Log in
+                  </Link>
+                  <Link to="/register" className="btn-primary text-sm">
+                    Get Started
+                  </Link>
+                </>
+              )}
             </div>
           </div>
         </div>

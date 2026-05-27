@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { adminApi } from '../api';
+import { useNavigate } from 'react-router-dom';
+import { adminApi, getUser } from '../api';
 import toast from 'react-hot-toast';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
@@ -293,6 +294,18 @@ function UserDetailsDrawer({ user, isOpen, onClose, onToggleAdmin, onDeleteUser,
 // ─── Main Admin Panel ─────────────────────────────────────────────────────────
 
 export default function AdminPanel() {
+  const navigate = useNavigate();
+  const currentUser = getUser();
+
+  useEffect(() => {
+    const isAdminSession = localStorage.getItem('voiceflow_admin_session') === 'true';
+    const isAuthorized = currentUser && currentUser.is_admin && currentUser.email.toLowerCase() === 'hasintha@gmail.com' && isAdminSession;
+    if (!isAuthorized) {
+      toast.error('Access denied. Admin privileges required.');
+      navigate('/admin/login');
+    }
+  }, [currentUser, navigate]);
+
   const [stats, setStats] = useState({
     total_users: 0,
     total_characters_used: 0,
@@ -326,6 +339,9 @@ export default function AdminPanel() {
   };
 
   const loadAdminData = async () => {
+    const isAdminSession = localStorage.getItem('voiceflow_admin_session') === 'true';
+    const isAuthorized = currentUser && currentUser.is_admin && currentUser.email.toLowerCase() === 'hasintha@gmail.com' && isAdminSession;
+    if (!isAuthorized) return;
     setLoading(true);
     try {
       const [statsData, usersData] = await Promise.all([
@@ -433,6 +449,12 @@ export default function AdminPanel() {
   useEffect(() => {
     setCurrentPage(1);
   }, [search, roleFilter]);
+
+  const isAdminSession = localStorage.getItem('voiceflow_admin_session') === 'true';
+  const isAuthorized = currentUser && currentUser.is_admin && currentUser.email.toLowerCase() === 'hasintha@gmail.com' && isAdminSession;
+  if (!isAuthorized) {
+    return null;
+  }
 
   const handleSort = (key) => {
     let direction = 'asc';

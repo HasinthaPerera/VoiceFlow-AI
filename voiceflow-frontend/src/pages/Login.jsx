@@ -96,22 +96,31 @@ export default function Login() {
           </div>
 
           {/* Footer controls */}
-          <div className="flex items-center justify-between text-xs text-gray-400 max-w-sm w-full mx-auto border-t border-white/5 pt-4">
-            <label className="flex items-center space-x-2 cursor-pointer select-none">
-              <input 
-                type="checkbox" 
-                checked={rememberMe} 
-                onChange={(e) => setRememberMe(e.target.checked)} 
-                className="rounded border-white/10 bg-white/5 text-secondary focus:ring-0 focus:ring-offset-0 w-4 h-4"
-              />
-              <span>Remember me</span>
-            </label>
-            <Link to="/register" className="text-secondary hover:text-secondary/80 font-semibold md:hidden">
-              Register
-            </Link>
-            <span className="hidden md:inline hover:text-white cursor-pointer transition-colors">
-              Forgot password?
-            </span>
+          <div className="flex flex-col gap-3.5 max-w-sm w-full mx-auto border-t border-white/5 pt-4">
+            <div className="flex items-center justify-between text-xs text-gray-400">
+              <label className="flex items-center space-x-2 cursor-pointer select-none">
+                <input 
+                  type="checkbox" 
+                  checked={rememberMe} 
+                  onChange={(e) => setRememberMe(e.target.checked)} 
+                  className="rounded border-white/10 bg-white/5 text-secondary focus:ring-0 focus:ring-offset-0 w-4 h-4"
+                />
+                <span>Remember me</span>
+              </label>
+              <Link to="/register" className="text-secondary hover:text-secondary/80 font-semibold md:hidden">
+                Register
+              </Link>
+              <span className="hidden md:inline hover:text-white cursor-pointer transition-colors">
+                Forgot password?
+              </span>
+            </div>
+            
+            <div className="text-center text-xs">
+              <span className="text-gray-500">Are you an administrator? </span>
+              <Link to="/admin/login" className="text-secondary hover:text-secondary/80 font-bold transition-colors">
+                Login as Admin
+              </Link>
+            </div>
           </div>
         </div>
 

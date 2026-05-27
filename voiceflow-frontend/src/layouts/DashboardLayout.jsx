@@ -21,6 +21,7 @@ export default function DashboardLayout() {
   const handleLogout = () => {
     localStorage.removeItem('voiceflow_token');
     localStorage.removeItem('voiceflow_user');
+    localStorage.removeItem('voiceflow_admin_session');
     toast.success('Logged out successfully');
     navigate('/');
   };
@@ -32,8 +33,9 @@ export default function DashboardLayout() {
     { path: '/dashboard/settings', icon: Settings, label: 'Settings' },
   ];
 
-  if (user?.is_admin) {
-    navItems.push({ path: '/dashboard/admin', icon: Shield, label: 'Admin Panel' });
+  const isAdminSession = localStorage.getItem('voiceflow_admin_session') === 'true';
+  if (user?.is_admin && user.email.toLowerCase() === 'hasintha@gmail.com' && isAdminSession) {
+    navItems.push({ path: '/admin', icon: Shield, label: 'Admin Panel' });
   }
 
   const Sidebar = () => (

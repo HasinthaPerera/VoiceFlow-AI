@@ -15,6 +15,7 @@ import VoiceGenerator from './pages/VoiceGenerator';
 import History from './pages/History';
 import Settings from './pages/Settings';
 import AdminPanel from './pages/AdminPanel';
+import AdminLogin from './pages/AdminLogin';
 
 function App() {
   return (
@@ -27,11 +28,13 @@ function App() {
         }
       }} />
       <Routes>
-        {/* Public Routes */}
+        {/* Public / Standalone Routes */}
         <Route element={<MainLayout />}>
           <Route path="/" element={<Landing />} />
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
+          <Route path="/admin/login" element={<AdminLogin />} />
+          <Route path="/admin" element={<AdminPanel />} />
         </Route>
 
         {/* Protected Dashboard Routes */}
@@ -40,7 +43,6 @@ function App() {
           <Route path="generate" element={<VoiceGenerator />} />
           <Route path="history" element={<History />} />
           <Route path="settings" element={<Settings />} />
-          <Route path="admin" element={<AdminPanel />} />
         </Route>
       </Routes>
     </Router>
