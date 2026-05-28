@@ -43,3 +43,51 @@
 ::-webkit-scrollbar-thumb:hover {
   background: #52525b;
 }
+
+/* Custom CSS Animations */
+@keyframes float {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-10px); }
+}
+
+@keyframes wave {
+  0%, 100% { transform: scaleY(0.3); }
+  50% { transform: scaleY(1); }
+}
+
+@keyframes grid-move {
+  0% { background-position: 0 0; }
+  100% { background-position: 40px 40px; }
+}
+
+.animate-float {
+  animation: float 6s ease-in-out infinite;
+}
+
+.animate-float-delayed {
+  animation: float 6s ease-in-out infinite;
+  animation-delay: 3s;
+}
+
+.animate-wave-bar {
+  animation: wave 1.2s ease-in-out infinite;
+  transform-origin: bottom;
+}
+
+.bg-grid-pattern {
+  background-size: 40px 40px;
+  background-image: 
+    linear-gradient(to right, rgba(255, 255, 255, 0.02) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
+  animation: grid-move 20s linear infinite;
+}
+
+/* Custom soundwave utility */
+.wave-height-1 { height: 40%; }
+.wave-height-2 { height: 75%; }
+.wave-height-3 { height: 50%; }
+.wave-height-4 { height: 90%; }
+.wave-height-5 { height: 60%; }
+.wave-height-6 { height: 85%; }
+.wave-height-7 { height: 35%; }
+
