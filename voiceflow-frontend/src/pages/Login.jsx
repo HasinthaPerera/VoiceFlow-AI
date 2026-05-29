@@ -132,13 +132,6 @@ export default function Login() {
           {/* Overlay gradient for contrast */}
           <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-black/40 z-10" />
 
-          {/* Banner Navbar */}
-          <div className="absolute top-0 left-0 right-0 p-8 flex justify-end items-center space-x-8 z-20 text-xs font-semibold tracking-wider text-gray-300">
-            <Link to="/" className="hover:text-white transition-colors">HOME</Link>
-            <a href="#" className="hover:text-white transition-colors">DOWNLOAD</a>
-            <a href="#" className="hover:text-white transition-colors">ABOUT</a>
-            <Link to="/register" className="text-white hover:text-white/80 transition-colors bg-white/10 px-4 py-2 rounded-full backdrop-blur-md border border-white/10">REGISTER</Link>
-          </div>
 
           {/* Bold Heading Text */}
           <div className="absolute bottom-12 left-12 z-20 max-w-md">
