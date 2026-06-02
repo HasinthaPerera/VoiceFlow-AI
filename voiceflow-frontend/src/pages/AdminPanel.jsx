@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { adminApi, getUser } from '../api';
+import { adminApi, getUser, BASE_URL } from '../api';
 import toast from 'react-hot-toast';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
@@ -23,7 +23,10 @@ import {
   Filter,
   Activity,
   X,
-  RefreshCw
+  RefreshCw,
+  Play,
+  Pause,
+  Sliders
 } from 'lucide-react';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -116,7 +119,90 @@ function ConfirmationModal({ isOpen, title, message, confirmLabel, confirmVarian
   );
 }
 
-function UserDetailsDrawer({ user, isOpen, onClose, onToggleAdmin, onDeleteUser, actionLoadingId }) {
+function AdjustUsageModal({ isOpen, user, onSave, onCancel, isLoading }) {
+  const [chars, setChars] = useState(0);
+  const [voices, setVoices] = useState(0);
+
+  useEffect(() => {
+    if (user) {
+      setChars(user.characters_used);
+      setVoices(user.voices_generated);
+    }
+  }, [user, isOpen]);
+
+  if (!isOpen || !user) return null;
+
+  return (
+    <AnimatePresence>
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+        {/* Backdrop */}
+        <motion.div 
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          onClick={onCancel}
+          className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+        />
+        {/* Modal Panel */}
+        <motion.div 
+          initial={{ scale: 0.95, opacity: 0, y: 20 }}
+          animate={{ scale: 1, opacity: 1, y: 0 }}
+          exit={{ scale: 0.95, opacity: 0, y: 20 }}
+          className="relative w-full max-w-md overflow-hidden rounded-2xl bg-surface border border-white/10 p-6 shadow-2xl z-10"
+        >
+          <h3 className="text-xl font-bold text-white mb-2 flex items-center gap-2">
+            <Sliders className="text-primary shrink-0" size={24} />
+            Adjust User Usage Stats
+          </h3>
+          <p className="text-gray-400 text-sm mb-6 leading-relaxed">
+            Modify characters used and voices generated count for <strong>{user.name}</strong> ({user.email}).
+          </p>
+          <div className="space-y-4 mb-6">
+            <div>
+              <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Characters Used</label>
+              <input
+                type="number"
+                min="0"
+                value={chars}
+                onChange={(e) => setChars(Math.max(0, parseInt(e.target.value) || 0))}
+                className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2.5 text-white focus:outline-none focus:ring-2 focus:ring-primary/50 text-sm"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Voices Generated</label>
+              <input
+                type="number"
+                min="0"
+                value={voices}
+                onChange={(e) => setVoices(Math.max(0, parseInt(e.target.value) || 0))}
+                className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2.5 text-white focus:outline-none focus:ring-2 focus:ring-primary/50 text-sm"
+              />
+            </div>
+          </div>
+          <div className="flex justify-end gap-3">
+            <button
+              onClick={onCancel}
+              disabled={isLoading}
+              className="px-4 py-2 text-sm bg-white/5 hover:bg-white/10 text-white rounded-lg transition-colors border border-white/5"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={() => onSave(chars, voices)}
+              disabled={isLoading}
+              className="px-4 py-2 text-sm text-white rounded-lg flex items-center gap-2 font-medium bg-gradient-to-r from-primary to-secondary shadow-lg shadow-primary/15 transition-all duration-300 disabled:opacity-50"
+            >
+              {isLoading && <Loader2 className="animate-spin" size={16} />}
+              Save Changes
+            </button>
+          </div>
+        </motion.div>
+      </div>
+    </AnimatePresence>
+  );
+}
+
+function UserDetailsDrawer({ user, isOpen, onClose, onToggleAdmin, onDeleteUser, onOpenAdjustModal, actionLoadingId }) {
   if (!user) return null;
   
   const formattedDate = new Date(user.created_at).toLocaleString(undefined, {
@@ -269,6 +355,14 @@ function UserDetailsDrawer({ user, isOpen, onClose, onToggleAdmin, onDeleteUser,
                   </button>
 
                   <button
+                    onClick={() => onOpenAdjustModal(user)}
+                    disabled={actionLoadingId !== null}
+                    className="w-full py-2.5 px-4 rounded-xl flex items-center justify-center gap-2 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-400 border border-indigo-500/20 text-sm font-medium transition-all duration-300"
+                  >
+                    <Sliders size={16} /> Adjust Usage Stats
+                  </button>
+
+                  <button
                     onClick={() => onDeleteUser(user.id, user.email)}
                     disabled={actionLoadingId !== null}
                     className="w-full py-2.5 px-4 rounded-xl flex items-center justify-center gap-2 bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 text-sm font-medium transition-all duration-300"
@@ -311,6 +405,11 @@ export default function AdminPanel() {
     total_characters_used: 0,
     total_voices_generated: 0
   });
+  
+  // Tabs: 'users' or 'generations'
+  const [activeTab, setActiveTab] = useState('users');
+
+  // Users Tab States
   const [users, setUsers] = useState([]);
   const [search, setSearch] = useState('');
   const [roleFilter, setRoleFilter] = useState('all');
@@ -320,7 +419,19 @@ export default function AdminPanel() {
   const [loading, setLoading] = useState(true);
   const [actionLoadingId, setActionLoadingId] = useState(null);
   
-  // Extra interactive UX states
+  // Generations Tab States
+  const [generations, setGenerations] = useState([]);
+  const [generationsTotal, setGenerationsTotal] = useState(0);
+  const [generationsSearch, setGenerationsSearch] = useState('');
+  const [generationsPage, setGenerationsPage] = useState(1);
+  const [generationsPageSize, setGenerationsPageSize] = useState(5);
+  const [generationsLoading, setGenerationsLoading] = useState(false);
+
+  // Audio Playback States
+  const [playingAudioId, setPlayingAudioId] = useState(null);
+  const [audioInstance, setAudioInstance] = useState(null);
+
+  // Modal States
   const [selectedUser, setSelectedUser] = useState(null);
   const [actionLogs, setActionLogs] = useState([]);
   const [confirmModal, setConfirmModal] = useState({
@@ -330,6 +441,11 @@ export default function AdminPanel() {
     confirmLabel: '',
     confirmVariant: 'primary',
     onConfirm: null,
+    isLoading: false
+  });
+  const [adjustModal, setAdjustModal] = useState({
+    isOpen: false,
+    user: null,
     isLoading: false
   });
 
@@ -359,9 +475,88 @@ export default function AdminPanel() {
     }
   };
 
+  const loadGenerationsData = async () => {
+    const isAdminSession = localStorage.getItem('voiceflow_admin_session') === 'true';
+    const isAuthorized = currentUser && currentUser.is_admin && currentUser.email.toLowerCase() === 'hasintha@gmail.com' && isAdminSession;
+    if (!isAuthorized) return;
+    setGenerationsLoading(true);
+    try {
+      const skip = (generationsPage - 1) * generationsPageSize;
+      const data = await adminApi.getGenerations(generationsSearch, skip, generationsPageSize);
+      setGenerations(data.items);
+      setGenerationsTotal(data.total);
+      addLog(`Fetched global generations history records (Page ${generationsPage}).`, 'success');
+    } catch (err) {
+      toast.error('Failed to load global voice generations logs.');
+      addLog('Failed to sync generations data with the backend API.', 'danger');
+    } finally {
+      setGenerationsLoading(false);
+    }
+  };
+
   useEffect(() => {
     loadAdminData();
   }, []);
+
+  useEffect(() => {
+    if (activeTab === 'generations') {
+      loadGenerationsData();
+    }
+  }, [activeTab, generationsSearch, generationsPage, generationsPageSize]);
+
+  // Cleanup audio playback on unmount
+  useEffect(() => {
+    return () => {
+      if (audioInstance) {
+        audioInstance.pause();
+      }
+    };
+  }, [audioInstance]);
+
+  const stopAudio = () => {
+    if (audioInstance) {
+      audioInstance.pause();
+      setPlayingAudioId(null);
+    }
+  };
+
+  const playAudio = (url, genId) => {
+    if (!url) {
+      toast.error('No audio file associated with this generation.');
+      return;
+    }
+    const absoluteUrl = url.startsWith('http') ? url : `${BASE_URL}${url}`;
+    
+    if (playingAudioId === genId) {
+      audioInstance.pause();
+      setPlayingAudioId(null);
+    } else {
+      if (audioInstance) {
+        audioInstance.pause();
+      }
+      const audio = new Audio(absoluteUrl);
+      audio.play().catch(e => {
+        toast.error('Playback failed. The audio file might have been cleaned up.');
+        setPlayingAudioId(null);
+      });
+      audio.onended = () => setPlayingAudioId(null);
+      setAudioInstance(audio);
+      setPlayingAudioId(genId);
+    }
+  };
+
+  const handleTabChange = (tab) => {
+    setActiveTab(tab);
+    stopAudio();
+  };
+
+  const handleSyncData = () => {
+    if (activeTab === 'users') {
+      loadAdminData();
+    } else {
+      loadGenerationsData();
+    }
+  };
 
   const handleToggleAdmin = (userId, currentStatus) => {
     const userToEdit = users.find(u => u.id === userId);
@@ -383,7 +578,6 @@ export default function AdminPanel() {
           toast.success(res.message || 'Updated user role.');
           addLog(`Updated role of user "${userToEdit.name}" to ${!currentStatus ? 'Admin' : 'Standard User'}.`, 'success');
           
-          // Update local state
           setUsers(prev => 
             prev.map(u => u.id === userId ? { ...u, is_admin: !currentStatus } : u)
           );
@@ -392,7 +586,6 @@ export default function AdminPanel() {
             setSelectedUser(prev => ({ ...prev, is_admin: !currentStatus }));
           }
 
-          // Reload stats
           const statsData = await adminApi.getStats();
           setStats(statsData);
         } catch (err) {
@@ -424,14 +617,12 @@ export default function AdminPanel() {
           toast.success(res.message || 'User deleted successfully.');
           addLog(`Deleted user account: "${userToEdit.name}" (${userEmail}).`, 'danger');
           
-          // Remove from local state
           setUsers(prev => prev.filter(u => u.id !== userId));
           
           if (selectedUser && selectedUser.id === userId) {
             setSelectedUser(null);
           }
 
-          // Reload stats
           const statsData = await adminApi.getStats();
           setStats(statsData);
         } catch (err) {
@@ -445,10 +636,76 @@ export default function AdminPanel() {
     });
   };
 
+  const handleAdjustUsageSave = async (chars, voices) => {
+    if (!adjustModal.user) return;
+    const userId = adjustModal.user.id;
+    setAdjustModal(prev => ({ ...prev, isLoading: true }));
+    try {
+      const res = await adminApi.adjustUsage(userId, chars, voices);
+      toast.success(res.message || 'Successfully updated usage stats.');
+      addLog(`Adjusted usage stats for "${adjustModal.user.name}" to Characters Used: ${chars}, Voices Generated: ${voices}.`, 'success');
+      
+      setUsers(prev => 
+        prev.map(u => u.id === userId ? { ...u, characters_used: chars, voices_generated: voices } : u)
+      );
+      
+      if (selectedUser && selectedUser.id === userId) {
+        setSelectedUser(prev => ({ ...prev, characters_used: chars, voices_generated: voices }));
+      }
+
+      const statsData = await adminApi.getStats();
+      setStats(statsData);
+      
+      setAdjustModal({ isOpen: false, user: null, isLoading: false });
+    } catch (err) {
+      toast.error(err.message || 'Failed to adjust usage.');
+      addLog(`Failed to adjust usage stats for "${adjustModal.user.name}".`, 'danger');
+    } finally {
+      setAdjustModal(prev => ({ ...prev, isLoading: false }));
+    }
+  };
+
+  const handleDeleteGeneration = (genId, userEmail) => {
+    setConfirmModal({
+      isOpen: true,
+      title: 'Permanently Delete Voice Generation?',
+      message: 'Are you sure you want to delete this specific voice generation entry and remove its audio file from the server? This action CANNOT be undone.',
+      confirmLabel: 'Permanently Delete',
+      confirmVariant: 'danger',
+      onConfirm: async () => {
+        setActionLoadingId(genId);
+        setConfirmModal(prev => ({ ...prev, isLoading: true }));
+        try {
+          if (playingAudioId === genId) {
+            stopAudio();
+          }
+          await adminApi.deleteGeneration(genId);
+          toast.success('Generation log deleted successfully.');
+          addLog(`Deleted global voice generation record #${genId} by ${userEmail}.`, 'danger');
+          
+          loadGenerationsData();
+          
+          const statsData = await adminApi.getStats();
+          setStats(statsData);
+        } catch (err) {
+          toast.error(err.message || 'Failed to delete generation.');
+          addLog(`Failed to delete global voice generation record #${genId}.`, 'danger');
+        } finally {
+          setActionLoadingId(null);
+          setConfirmModal({ isOpen: false, title: '', message: '', confirmLabel: '', confirmVariant: 'primary', onConfirm: null, isLoading: false });
+        }
+      }
+    });
+  };
+
   // Reset page when filters change
   useEffect(() => {
     setCurrentPage(1);
   }, [search, roleFilter]);
+
+  useEffect(() => {
+    setGenerationsPage(1);
+  }, [generationsSearch]);
 
   const isAdminSession = localStorage.getItem('voiceflow_admin_session') === 'true';
   const isAuthorized = currentUser && currentUser.is_admin && currentUser.email.toLowerCase() === 'hasintha@gmail.com' && isAdminSession;
@@ -465,7 +722,7 @@ export default function AdminPanel() {
     addLog(`Sorted user registry by ${key.replace('_', ' ')} (${direction.toUpperCase()}).`, 'info');
   };
 
-  // Filter and sort computation
+  // Filter and sort computation for users
   const filteredUsers = users.filter(u => {
     const matchesSearch = u.name.toLowerCase().includes(search.toLowerCase()) ||
                           u.email.toLowerCase().includes(search.toLowerCase());
@@ -500,6 +757,9 @@ export default function AdminPanel() {
   const totalItems = sortedUsers.length;
   const totalPages = Math.ceil(totalItems / pageSize) || 1;
   const paginatedUsers = sortedUsers.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+
+  // Filter and sort computation for generations
+  const generationsTotalPages = Math.ceil(generationsTotal / generationsPageSize) || 1;
 
   // Dynamic dashboard metadata
   const avgChars = stats.total_users ? Math.round(stats.total_characters_used / stats.total_users) : 0;
@@ -562,14 +822,14 @@ export default function AdminPanel() {
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h1 className="text-3xl font-bold text-white mb-2">Admin Panel</h1>
-          <p className="text-gray-400">Monitor system activity, manage users, and update privileges.</p>
+          <p className="text-gray-400">Monitor system activity, manage users, and moderate generation outputs.</p>
         </div>
         <button
-          onClick={loadAdminData}
-          disabled={loading}
+          onClick={handleSyncData}
+          disabled={loading || generationsLoading}
           className="btn-secondary flex items-center gap-2 py-2.5 px-4 text-sm font-medium hover:text-white hover:border-white/20"
         >
-          <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+          <RefreshCw className={`w-4 h-4 ${(loading || generationsLoading) ? 'animate-spin' : ''}`} />
           <span>Sync Data</span>
         </button>
       </div>
@@ -616,234 +876,489 @@ export default function AdminPanel() {
         </motion.div>
       )}
 
-      {/* Main Panel Controls & Table */}
-      <div className="space-y-4">
-        {/* Table Filters */}
-        <div className="flex flex-col lg:flex-row justify-between items-stretch lg:items-center gap-4 bg-white/2 p-4 rounded-xl border border-white/5">
-          <div className="flex flex-col sm:flex-row gap-4 items-stretch sm:items-center flex-1">
-            {/* Search Input */}
-            <div className="relative flex-1">
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-500">
-                <Search size={18} />
-              </div>
-              <input
-                type="text"
-                className="input-field pl-10 bg-surface focus:border-primary/50"
-                placeholder="Search user by name or email..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-              />
-            </div>
-
-            {/* Role Filter */}
-            <div className="relative min-w-[150px]">
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-500">
-                <Filter size={16} />
-              </div>
-              <select
-                value={roleFilter}
-                onChange={(e) => setRoleFilter(e.target.value)}
-                className="input-field pl-9 bg-surface appearance-none pr-8 cursor-pointer text-sm"
-              >
-                <option value="all">All Roles</option>
-                <option value="admin">Admins Only</option>
-                <option value="user">Users Only</option>
-              </select>
-              <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-gray-500">
-                <ChevronDown size={14} />
-              </div>
-            </div>
-          </div>
-
-          {/* Rows Limit selection */}
-          <div className="flex items-center gap-2 self-end lg:self-auto text-sm text-gray-400">
-            <span>Rows per page:</span>
-            <div className="relative">
-              <select
-                value={pageSize}
-                onChange={(e) => {
-                  setPageSize(Number(e.target.value));
-                  setCurrentPage(1);
-                }}
-                className="bg-white/5 border border-white/10 rounded-lg px-2.5 py-1.5 text-white focus:outline-none focus:ring-1 focus:ring-primary/50 cursor-pointer pr-7 appearance-none text-xs sm:text-sm"
-              >
-                <option value={5} className="bg-surface">5</option>
-                <option value={10} className="bg-surface">10</option>
-                <option value={25} className="bg-surface">25</option>
-                <option value={50} className="bg-surface">50</option>
-              </select>
-              <div className="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none text-gray-500">
-                <ChevronDown size={12} />
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* User Table Card */}
-        <div className="glass-panel overflow-hidden border border-white/5 shadow-xl">
-          {loading ? (
-            <div className="flex items-center justify-center py-20 text-gray-400">
-              <Loader2 className="animate-spin mr-3" size={24} />
-              Synchronizing user database...
-            </div>
-          ) : paginatedUsers.length === 0 ? (
-            <div className="text-center py-20 text-gray-500">
-              <p className="text-lg font-medium">No accounts matched your criteria.</p>
-              <p className="text-sm mt-1">Try resetting search parameters or filters.</p>
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse">
-                <thead>
-                  <tr className="bg-white/5 border-b border-white/5">
-                    <SortHeader label="User Name / Email" sortKey="name" />
-                    <SortHeader label="Registration Date" sortKey="created_at" alignClass="hidden md:table-cell" />
-                    <SortHeader label="Chars Used" sortKey="characters_used" alignClass="text-center" />
-                    <SortHeader label="Voices" sortKey="voices_generated" alignClass="text-center" />
-                    <SortHeader label="Access Role" sortKey="is_admin" alignClass="text-center" />
-                    <th className="p-4 font-medium text-gray-400 text-xs uppercase tracking-wider text-right">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-white/5">
-                  {paginatedUsers.map((item) => (
-                    <tr 
-                      key={item.id} 
-                      onClick={() => setSelectedUser(item)}
-                      className="hover:bg-white/5 transition-colors group cursor-pointer"
-                    >
-                      <td className="p-4">
-                        <div className="flex flex-col">
-                          <span className="text-white font-medium group-hover:text-primary transition-colors">
-                            <HighlightText text={item.name} search={search} />
-                          </span>
-                          <span className="text-gray-500 text-sm">
-                            <HighlightText text={item.email} search={search} />
-                          </span>
-                        </div>
-                      </td>
-                      <td className="p-4 hidden md:table-cell">
-                        <div className="flex items-center text-gray-400 text-sm space-x-2">
-                          <Calendar size={14} className="text-gray-500" />
-                          <span>{new Date(item.created_at).toLocaleDateString()}</span>
-                        </div>
-                      </td>
-                      <td className="p-4 text-center">
-                        <span className="text-white font-mono text-sm font-semibold">
-                          {item.characters_used.toLocaleString()}
-                        </span>
-                      </td>
-                      <td className="p-4 text-center">
-                        <span className="text-white font-mono text-sm font-semibold">
-                          {item.voices_generated}
-                        </span>
-                      </td>
-                      <td className="p-4">
-                        <div className="flex justify-center">
-                          {item.is_admin ? (
-                            <span className="flex items-center space-x-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-primary/10 text-primary border border-primary/20">
-                              <Shield size={12} />
-                              <span>Admin</span>
-                            </span>
-                          ) : (
-                            <span className="flex items-center space-x-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-white/5 text-gray-400 border border-white/5">
-                              <span>User</span>
-                            </span>
-                          )}
-                        </div>
-                      </td>
-                      <td className="p-4" onClick={(e) => e.stopPropagation()}>
-                        <div className="flex items-center justify-end space-x-2">
-                          <button
-                            onClick={() => handleToggleAdmin(item.id, item.is_admin)}
-                            disabled={actionLoadingId !== null}
-                            className={`p-2 rounded-lg transition-colors border border-transparent ${
-                              item.is_admin 
-                                ? 'text-orange-400 hover:bg-orange-400/10 hover:border-orange-400/20' 
-                                : 'text-primary hover:bg-primary/10 hover:border-primary/20'
-                            }`}
-                            title={item.is_admin ? 'Demote User (Revoke Admin)' : 'Promote User to Admin'}
-                          >
-                            {actionLoadingId === item.id ? (
-                              <Loader2 className="animate-spin" size={18} />
-                            ) : item.is_admin ? (
-                              <Unlock size={18} />
-                            ) : (
-                              <Lock size={18} />
-                            )}
-                          </button>
-                          <button
-                            onClick={() => handleDeleteUser(item.id, item.email)}
-                            disabled={actionLoadingId !== null}
-                            className="p-2 text-gray-400 hover:text-red-400 hover:bg-red-400/10 hover:border-red-400/20 rounded-lg transition-colors border border-transparent"
-                            title="Delete User Account"
-                          >
-                            {actionLoadingId === item.id ? (
-                              <Loader2 className="animate-spin" size={18} />
-                            ) : (
-                              <Trash2 size={18} />
-                            )}
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+      {/* Tab Selector */}
+      <div className="flex border-b border-white/5 space-x-6 pb-2">
+        <button
+          onClick={() => handleTabChange('users')}
+          className={`pb-3 font-semibold text-sm transition-all duration-300 relative ${
+            activeTab === 'users' ? 'text-primary' : 'text-gray-400 hover:text-white'
+          }`}
+        >
+          <span>Users Registry</span>
+          {activeTab === 'users' && (
+            <motion.div layoutId="activeTabUnderline" className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary" />
           )}
-
-          {/* Pagination Footer */}
-          {!loading && totalItems > 0 && (
-            <div className="bg-white/2 px-6 py-4 flex flex-col sm:flex-row justify-between items-center gap-4 border-t border-white/5 text-sm text-gray-400">
-              <div>
-                Showing{' '}
-                <span className="text-white font-medium">
-                  {totalItems === 0 ? 0 : (currentPage - 1) * pageSize + 1}
-                </span>{' '}
-                to{' '}
-                <span className="text-white font-medium">
-                  {Math.min(currentPage * pageSize, totalItems)}
-                </span>{' '}
-                of <span className="text-white font-medium">{totalItems}</span> entries
-              </div>
-
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-                  disabled={currentPage === 1}
-                  className="p-2 rounded-lg bg-white/5 border border-white/5 text-white disabled:opacity-30 disabled:cursor-not-allowed hover:bg-white/10 transition-colors"
-                  title="Previous Page"
-                >
-                  <ChevronLeft size={16} />
-                </button>
-
-                {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
-                  <button
-                    key={page}
-                    onClick={() => setCurrentPage(page)}
-                    className={`w-8 h-8 rounded-lg font-medium text-xs sm:text-sm transition-all ${
-                      currentPage === page
-                        ? 'bg-gradient-to-r from-primary to-secondary text-white shadow-md shadow-primary/25 border-transparent'
-                        : 'bg-white/5 hover:bg-white/10 border border-white/5 text-gray-300'
-                    }`}
-                  >
-                    {page}
-                  </button>
-                ))}
-
-                <button
-                  onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
-                  disabled={currentPage === totalPages}
-                  className="p-2 rounded-lg bg-white/5 border border-white/5 text-white disabled:opacity-30 disabled:cursor-not-allowed hover:bg-white/10 transition-colors"
-                  title="Next Page"
-                >
-                  <ChevronRight size={16} />
-                </button>
-              </div>
-            </div>
+        </button>
+        <button
+          onClick={() => handleTabChange('generations')}
+          className={`pb-3 font-semibold text-sm transition-all duration-300 relative ${
+            activeTab === 'generations' ? 'text-primary' : 'text-gray-400 hover:text-white'
+          }`}
+        >
+          <span>System Generations Log</span>
+          {activeTab === 'generations' && (
+            <motion.div layoutId="activeTabUnderline" className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary" />
           )}
-        </div>
+        </button>
       </div>
+
+      {/* Main Panel Controls & Table */}
+      <AnimatePresence mode="wait">
+        {activeTab === 'users' ? (
+          <motion.div
+            key="users-tab"
+            initial={{ opacity: 0, y: 15 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -15 }}
+            transition={{ duration: 0.25 }}
+            className="space-y-4"
+          >
+            {/* Table Filters */}
+            <div className="flex flex-col lg:flex-row justify-between items-stretch lg:items-center gap-4 bg-white/2 p-4 rounded-xl border border-white/5">
+              <div className="flex flex-col sm:flex-row gap-4 items-stretch sm:items-center flex-1">
+                {/* Search Input */}
+                <div className="relative flex-1">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-500">
+                    <Search size={18} />
+                  </div>
+                  <input
+                    type="text"
+                    className="input-field pl-10 bg-surface focus:border-primary/50"
+                    placeholder="Search user by name or email..."
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                  />
+                </div>
+
+                {/* Role Filter */}
+                <div className="relative min-w-[150px]">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-500">
+                    <Filter size={16} />
+                  </div>
+                  <select
+                    value={roleFilter}
+                    onChange={(e) => setRoleFilter(e.target.value)}
+                    className="input-field pl-9 bg-surface appearance-none pr-8 cursor-pointer text-sm"
+                  >
+                    <option value="all">All Roles</option>
+                    <option value="admin">Admins Only</option>
+                    <option value="user">Users Only</option>
+                  </select>
+                  <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-gray-500">
+                    <ChevronDown size={14} />
+                  </div>
+                </div>
+              </div>
+
+              {/* Rows Limit selection */}
+              <div className="flex items-center gap-2 self-end lg:self-auto text-sm text-gray-400">
+                <span>Rows per page:</span>
+                <div className="relative">
+                  <select
+                    value={pageSize}
+                    onChange={(e) => {
+                      setPageSize(Number(e.target.value));
+                      setCurrentPage(1);
+                    }}
+                    className="bg-white/5 border border-white/10 rounded-lg px-2.5 py-1.5 text-white focus:outline-none focus:ring-1 focus:ring-primary/50 cursor-pointer pr-7 appearance-none text-xs sm:text-sm"
+                  >
+                    <option value={5} className="bg-surface">5</option>
+                    <option value={10} className="bg-surface">10</option>
+                    <option value={25} className="bg-surface">25</option>
+                    <option value={50} className="bg-surface">50</option>
+                  </select>
+                  <div className="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none text-gray-500">
+                    <ChevronDown size={12} />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* User Table Card */}
+            <div className="glass-panel overflow-hidden border border-white/5 shadow-xl">
+              {loading ? (
+                <div className="flex items-center justify-center py-20 text-gray-400">
+                  <Loader2 className="animate-spin mr-3" size={24} />
+                  Synchronizing user database...
+                </div>
+              ) : paginatedUsers.length === 0 ? (
+                <div className="text-center py-20 text-gray-500">
+                  <p className="text-lg font-medium">No accounts matched your criteria.</p>
+                  <p className="text-sm mt-1">Try resetting search parameters or filters.</p>
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left border-collapse">
+                    <thead>
+                      <tr className="bg-white/5 border-b border-white/5">
+                        <SortHeader label="User Name / Email" sortKey="name" />
+                        <SortHeader label="Registration Date" sortKey="created_at" alignClass="hidden md:table-cell" />
+                        <SortHeader label="Chars Used" sortKey="characters_used" alignClass="text-center" />
+                        <SortHeader label="Voices" sortKey="voices_generated" alignClass="text-center" />
+                        <SortHeader label="Access Role" sortKey="is_admin" alignClass="text-center" />
+                        <th className="p-4 font-medium text-gray-400 text-xs uppercase tracking-wider text-right">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-white/5">
+                      {paginatedUsers.map((item) => (
+                        <tr 
+                          key={item.id} 
+                          onClick={() => setSelectedUser(item)}
+                          className="hover:bg-white/5 transition-colors group cursor-pointer"
+                        >
+                          <td className="p-4">
+                            <div className="flex flex-col">
+                              <span className="text-white font-medium group-hover:text-primary transition-colors">
+                                <HighlightText text={item.name} search={search} />
+                              </span>
+                              <span className="text-gray-500 text-sm">
+                                <HighlightText text={item.email} search={search} />
+                              </span>
+                            </div>
+                          </td>
+                          <td className="p-4 hidden md:table-cell">
+                            <div className="flex items-center text-gray-400 text-sm space-x-2">
+                              <Calendar size={14} className="text-gray-500" />
+                              <span>{new Date(item.created_at).toLocaleDateString()}</span>
+                            </div>
+                          </td>
+                          <td className="p-4 text-center">
+                            <span className="text-white font-mono text-sm font-semibold">
+                              {item.characters_used.toLocaleString()}
+                            </span>
+                          </td>
+                          <td className="p-4 text-center">
+                            <span className="text-white font-mono text-sm font-semibold">
+                              {item.voices_generated}
+                            </span>
+                          </td>
+                          <td className="p-4">
+                            <div className="flex justify-center">
+                              {item.is_admin ? (
+                                <span className="flex items-center space-x-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-primary/10 text-primary border border-primary/20">
+                                  <Shield size={12} />
+                                  <span>Admin</span>
+                                </span>
+                              ) : (
+                                <span className="flex items-center space-x-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-white/5 text-gray-400 border border-white/5">
+                                  <span>User</span>
+                                </span>
+                              )}
+                            </div>
+                          </td>
+                          <td className="p-4" onClick={(e) => e.stopPropagation()}>
+                            <div className="flex items-center justify-end space-x-2">
+                              <button
+                                onClick={() => handleToggleAdmin(item.id, item.is_admin)}
+                                disabled={actionLoadingId !== null}
+                                className={`p-2 rounded-lg transition-colors border border-transparent ${
+                                  item.is_admin 
+                                    ? 'text-orange-400 hover:bg-orange-400/10 hover:border-orange-400/20' 
+                                    : 'text-primary hover:bg-primary/10 hover:border-primary/20'
+                                }`}
+                                title={item.is_admin ? 'Demote User (Revoke Admin)' : 'Promote User to Admin'}
+                              >
+                                {actionLoadingId === item.id ? (
+                                  <Loader2 className="animate-spin" size={18} />
+                                ) : item.is_admin ? (
+                                  <Unlock size={18} />
+                                ) : (
+                                  <Lock size={18} />
+                                )}
+                              </button>
+                              
+                              <button
+                                onClick={() => setAdjustModal({ isOpen: true, user: item, isLoading: false })}
+                                disabled={actionLoadingId !== null}
+                                className="p-2 text-indigo-400 hover:bg-indigo-400/10 hover:border-indigo-400/20 rounded-lg transition-colors border border-transparent"
+                                title="Adjust Usage Stats / Credits"
+                              >
+                                <Sliders size={18} />
+                              </button>
+
+                              <button
+                                onClick={() => handleDeleteUser(item.id, item.email)}
+                                disabled={actionLoadingId !== null}
+                                className="p-2 text-gray-400 hover:text-red-400 hover:bg-red-400/10 hover:border-red-400/20 rounded-lg transition-colors border border-transparent"
+                                title="Delete User Account"
+                              >
+                                {actionLoadingId === item.id ? (
+                                  <Loader2 className="animate-spin" size={18} />
+                                ) : (
+                                  <Trash2 size={18} />
+                                )}
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+
+              {/* Pagination Footer */}
+              {!loading && totalItems > 0 && (
+                <div className="bg-white/2 px-6 py-4 flex flex-col sm:flex-row justify-between items-center gap-4 border-t border-white/5 text-sm text-gray-400">
+                  <div>
+                    Showing{' '}
+                    <span className="text-white font-medium">
+                      {totalItems === 0 ? 0 : (currentPage - 1) * pageSize + 1}
+                    </span>{' '}
+                    to{' '}
+                    <span className="text-white font-medium">
+                      {Math.min(currentPage * pageSize, totalItems)}
+                    </span>{' '}
+                    of <span className="text-white font-medium">{totalItems}</span> entries
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                      disabled={currentPage === 1}
+                      className="p-2 rounded-lg bg-white/5 border border-white/5 text-white disabled:opacity-30 disabled:cursor-not-allowed hover:bg-white/10 transition-colors"
+                      title="Previous Page"
+                    >
+                      <ChevronLeft size={16} />
+                    </button>
+
+                    {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
+                      <button
+                        key={page}
+                        onClick={() => setCurrentPage(page)}
+                        className={`w-8 h-8 rounded-lg font-medium text-xs sm:text-sm transition-all ${
+                          currentPage === page
+                            ? 'bg-gradient-to-r from-primary to-secondary text-white shadow-md shadow-primary/25 border-transparent'
+                            : 'bg-white/5 hover:bg-white/10 border border-white/5 text-gray-300'
+                        }`}
+                      >
+                        {page}
+                      </button>
+                    ))}
+
+                    <button
+                      onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                      disabled={currentPage === totalPages}
+                      className="p-2 rounded-lg bg-white/5 border border-white/5 text-white disabled:opacity-30 disabled:cursor-not-allowed hover:bg-white/10 transition-colors"
+                      title="Next Page"
+                    >
+                      <ChevronRight size={16} />
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          </motion.div>
+        ) : (
+          <motion.div
+            key="generations-tab"
+            initial={{ opacity: 0, y: 15 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -15 }}
+            transition={{ duration: 0.25 }}
+            className="space-y-4"
+          >
+            {/* Generations Filters */}
+            <div className="flex flex-col lg:flex-row justify-between items-stretch lg:items-center gap-4 bg-white/2 p-4 rounded-xl border border-white/5">
+              <div className="flex flex-col sm:flex-row gap-4 items-stretch sm:items-center flex-1">
+                {/* Search Generations */}
+                <div className="relative flex-1">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-500">
+                    <Search size={18} />
+                  </div>
+                  <input
+                    type="text"
+                    className="input-field pl-10 bg-surface focus:border-primary/50"
+                    placeholder="Search generations by user name, email, title, or prompt..."
+                    value={generationsSearch}
+                    onChange={(e) => setGenerationsSearch(e.target.value)}
+                  />
+                </div>
+              </div>
+
+              {/* Rows Limit selection */}
+              <div className="flex items-center gap-2 self-end lg:self-auto text-sm text-gray-400">
+                <span>Rows per page:</span>
+                <div className="relative">
+                  <select
+                    value={generationsPageSize}
+                    onChange={(e) => {
+                      setGenerationsPageSize(Number(e.target.value));
+                      setGenerationsPage(1);
+                    }}
+                    className="bg-white/5 border border-white/10 rounded-lg px-2.5 py-1.5 text-white focus:outline-none focus:ring-1 focus:ring-primary/50 cursor-pointer pr-7 appearance-none text-xs sm:text-sm"
+                  >
+                    <option value={5} className="bg-surface">5</option>
+                    <option value={10} className="bg-surface">10</option>
+                    <option value={25} className="bg-surface">25</option>
+                    <option value={50} className="bg-surface">50</option>
+                  </select>
+                  <div className="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none text-gray-500">
+                    <ChevronDown size={12} />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Generations Table Card */}
+            <div className="glass-panel overflow-hidden border border-white/5 shadow-xl">
+              {generationsLoading ? (
+                <div className="flex items-center justify-center py-20 text-gray-400">
+                  <Loader2 className="animate-spin mr-3" size={24} />
+                  Loading generation history log...
+                </div>
+              ) : generations.length === 0 ? (
+                <div className="text-center py-20 text-gray-500">
+                  <p className="text-lg font-medium">No generation logs found.</p>
+                  <p className="text-sm mt-1">Make sure standard users have generated speech.</p>
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left border-collapse">
+                    <thead>
+                      <tr className="bg-white/5 border-b border-white/5">
+                        <th className="p-4 font-medium text-gray-400 text-xs uppercase tracking-wider">User</th>
+                        <th className="p-4 font-medium text-gray-400 text-xs uppercase tracking-wider">Audio Details</th>
+                        <th className="p-4 font-medium text-gray-400 text-xs uppercase tracking-wider hidden md:table-cell">TTS Config</th>
+                        <th className="p-4 font-medium text-gray-400 text-xs uppercase tracking-wider text-center">Chars / Duration</th>
+                        <th className="p-4 font-medium text-gray-400 text-xs uppercase tracking-wider text-center">Preview</th>
+                        <th className="p-4 font-medium text-gray-400 text-xs uppercase tracking-wider text-right">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-white/5">
+                      {generations.map((item) => (
+                        <tr 
+                          key={item.id} 
+                          className="hover:bg-white/5 transition-colors group"
+                        >
+                          <td className="p-4 align-top">
+                            <div className="flex flex-col">
+                              <span className="text-white font-medium">
+                                {item.user.name}
+                              </span>
+                              <span className="text-gray-500 text-sm">
+                                {item.user.email}
+                              </span>
+                            </div>
+                          </td>
+                          <td className="p-4 align-top">
+                            <div className="flex flex-col max-w-xs sm:max-w-md">
+                              <span className="text-white font-semibold text-sm">
+                                {item.title}
+                              </span>
+                              <p className="text-gray-400 text-xs mt-1 leading-relaxed line-clamp-2 hover:line-clamp-none transition-all duration-300 cursor-pointer">
+                                {item.text}
+                              </p>
+                              <span className="text-gray-600 font-mono text-[10px] mt-1.5">
+                                Generated: {new Date(item.created_at).toLocaleString()}
+                              </span>
+                            </div>
+                          </td>
+                          <td className="p-4 align-top hidden md:table-cell text-sm text-gray-400">
+                            <div className="space-y-1">
+                              <div><span className="text-gray-600">Voice:</span> {item.voice}</div>
+                              <div><span className="text-gray-600">Lang:</span> {item.language}</div>
+                              <div><span className="text-gray-600">Speed:</span> {item.speed}x</div>
+                            </div>
+                          </td>
+                          <td className="p-4 align-top text-center text-sm font-mono text-white">
+                            <div className="flex flex-col items-center justify-center">
+                              <span>{item.char_count.toLocaleString()} chars</span>
+                              <span className="text-gray-500 text-xs mt-0.5">{item.duration.toFixed(1)}s</span>
+                            </div>
+                          </td>
+                          <td className="p-4 align-top">
+                            <div className="flex justify-center">
+                              <button
+                                onClick={() => playAudio(item.audio_url, item.id)}
+                                className={`w-8 h-8 rounded-full flex items-center justify-center transition-all duration-300 border ${
+                                  playingAudioId === item.id 
+                                    ? 'bg-primary/25 text-primary border-primary/40 shadow-lg shadow-primary/10' 
+                                    : 'bg-white/5 text-gray-400 hover:text-white border-white/5 hover:border-white/10 hover:bg-white/10'
+                                }`}
+                                title={playingAudioId === item.id ? 'Pause Audio' : 'Play Audio'}
+                              >
+                                {playingAudioId === item.id ? <Pause size={14} /> : <Play size={14} />}
+                              </button>
+                            </div>
+                          </td>
+                          <td className="p-4 align-top text-right">
+                            <div className="flex justify-end">
+                              <button
+                                onClick={() => handleDeleteGeneration(item.id, item.user.email)}
+                                disabled={actionLoadingId !== null}
+                                className="p-2 text-gray-400 hover:text-red-400 hover:bg-red-400/10 hover:border-red-400/20 rounded-lg transition-colors border border-transparent"
+                                title="Delete Generation Record"
+                              >
+                                {actionLoadingId === item.id ? (
+                                  <Loader2 className="animate-spin" size={18} />
+                                ) : (
+                                  <Trash2 size={18} />
+                                )}
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+
+              {/* Generations Pagination Footer */}
+              {!generationsLoading && generationsTotal > 0 && (
+                <div className="bg-white/2 px-6 py-4 flex flex-col sm:flex-row justify-between items-center gap-4 border-t border-white/5 text-sm text-gray-400">
+                  <div>
+                    Showing{' '}
+                    <span className="text-white font-medium">
+                      {generationsTotal === 0 ? 0 : (generationsPage - 1) * generationsPageSize + 1}
+                    </span>{' '}
+                    to{' '}
+                    <span className="text-white font-medium">
+                      {Math.min(generationsPage * generationsPageSize, generationsTotal)}
+                    </span>{' '}
+                    of <span className="text-white font-medium">{generationsTotal}</span> entries
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => setGenerationsPage(prev => Math.max(1, prev - 1))}
+                      disabled={generationsPage === 1}
+                      className="p-2 rounded-lg bg-white/5 border border-white/5 text-white disabled:opacity-30 disabled:cursor-not-allowed hover:bg-white/10 transition-colors"
+                      title="Previous Page"
+                    >
+                      <ChevronLeft size={16} />
+                    </button>
+
+                    {Array.from({ length: generationsTotalPages }, (_, i) => i + 1).map(page => (
+                      <button
+                        key={page}
+                        onClick={() => setGenerationsPage(page)}
+                        className={`w-8 h-8 rounded-lg font-medium text-xs sm:text-sm transition-all ${
+                          generationsPage === page
+                            ? 'bg-gradient-to-r from-primary to-secondary text-white shadow-md shadow-primary/25 border-transparent'
+                            : 'bg-white/5 hover:bg-white/10 border border-white/5 text-gray-300'
+                        }`}
+                      >
+                        {page}
+                      </button>
+                    ))}
+
+                    <button
+                      onClick={() => setGenerationsPage(prev => Math.min(generationsTotalPages, prev + 1))}
+                      disabled={generationsPage === generationsTotalPages}
+                      className="p-2 rounded-lg bg-white/5 border border-white/5 text-white disabled:opacity-30 disabled:cursor-not-allowed hover:bg-white/10 transition-colors"
+                      title="Next Page"
+                    >
+                      <ChevronRight size={16} />
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Collapsible Session Audit Logs */}
       <div className="glass-panel p-4 overflow-hidden border border-white/5">
@@ -893,6 +1408,15 @@ export default function AdminPanel() {
         isLoading={confirmModal.isLoading}
       />
 
+      {/* Adjust Usage Modal */}
+      <AdjustUsageModal
+        isOpen={adjustModal.isOpen}
+        user={adjustModal.user}
+        onSave={handleAdjustUsageSave}
+        onCancel={() => setAdjustModal({ isOpen: false, user: null, isLoading: false })}
+        isLoading={adjustModal.isLoading}
+      />
+
       {/* User details slide over drawer */}
       <UserDetailsDrawer
         user={selectedUser}
@@ -900,6 +1424,7 @@ export default function AdminPanel() {
         onClose={() => setSelectedUser(null)}
         onToggleAdmin={handleToggleAdmin}
         onDeleteUser={handleDeleteUser}
+        onOpenAdjustModal={(u) => setAdjustModal({ isOpen: true, user: u, isLoading: false })}
         actionLoadingId={actionLoadingId}
       />
     </div>

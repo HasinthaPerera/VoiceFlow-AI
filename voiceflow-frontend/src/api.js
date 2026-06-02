@@ -115,4 +115,15 @@ export const adminApi = {
     request(`/api/admin/users/${userId}`, {
       method: 'DELETE',
     }),
+  adjustUsage: (userId, characters_used, voices_generated) =>
+    request(`/api/admin/users/${userId}/adjust-usage`, {
+      method: 'PUT',
+      body: JSON.stringify({ characters_used, voices_generated }),
+    }),
+  getGenerations: (search = '', skip = 0, limit = 50) =>
+    request(`/api/admin/generations?search=${encodeURIComponent(search)}&skip=${skip}&limit=${limit}`),
+  deleteGeneration: (generationId) =>
+    request(`/api/admin/generations/${generationId}`, {
+      method: 'DELETE',
+    }),
 };
