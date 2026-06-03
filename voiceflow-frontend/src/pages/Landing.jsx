@@ -3,15 +3,22 @@ import { Link } from 'react-router-dom';
 import { 
   Mic2, PlayCircle, Settings2, Download, Zap, Play, Square, 
   Volume2, Sparkles, Languages, Check, ArrowRight, Star, 
-  Shield, ChevronDown
+  Shield, ChevronDown, Search, Cpu
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
+import { getUser, ttsApi } from '../api';
 
 export default function Landing() {
   // SEO Page Title
   useEffect(() => {
     document.title = "VoiceFlow AI - Transform Text into Lifelike Speech";
+  }, []);
+
+  // --- Auth & User State ---
+  const [user, setUser] = useState(null);
+  useEffect(() => {
+    setUser(getUser());
   }, []);
 
   // --- Interactive Playground State ---
@@ -22,33 +29,51 @@ export default function Landing() {
   const [isDemoPlaying, setIsDemoPlaying] = useState(false);
   const [isDemoSynthesizing, setIsDemoSynthesizing] = useState(false);
   const [activePresetIndex, setActivePresetIndex] = useState(0);
+  const [isCloudMode, setIsCloudMode] = useState(false);
+  const [cloudAudioUrl, setCloudAudioUrl] = useState(null);
+  
+  // Refs for Web Audio API & Canvas Visualizer
+  const audioRef = useRef(null);
+  const audioContextRef = useRef(null);
+  const analyserRef = useRef(null);
+  const sourceRef = useRef(null);
+  const animationFrameRef = useRef(null);
+  const canvasRef = useRef(null);
 
   const demoPresets = [
     { text: "Welcome to VoiceFlow AI. Experience the future of natural speech synthesis.", label: "Welcome" },
     { text: "Create engaging audiobooks in seconds with studio-quality narrations.", label: "Audiobooks" },
     { text: "Improve retention in e-learning courses with friendly and articulate voiceovers.", label: "E-Learning" },
     { text: "බොහෝම ස්තූතියි VoiceFlow භාවිතා කිරීම පිළිබඳව. ඔබගේ නිර්මාණ අදම අරඹන්න.", label: "Sinhala", lang: "sinhala" },
-    { text: "ভয়েসফ্লো এআই-তে আপনাকে স্বাগতম। আপনার লেখার জন্য সেরা ভয়েস তৈরি করুন।", label: "Bengali", lang: "hindi" } // Fallback to Hindi-style BCP
+    { text: "ভয়েসফ্লো এআই-তে আপনাকে স্বাগতম। আপনার লেখার জন্য সেরা ভয়েস তৈরি করুন।", label: "Bengali", lang: "hindi" }
   ];
 
   // --- Voice Showcase State ---
   const [activeCategory, setActiveCategory] = useState('All');
   const [playingVoiceId, setPlayingVoiceId] = useState(null);
+  const [voiceSearchQuery, setVoiceSearchQuery] = useState('');
 
   const categories = ['All', 'Podcast', 'Audiobooks', 'Corporate', 'E-Learning', 'Entertainment'];
 
   const sampleVoices = [
-    { id: 'emma', name: 'Emma', lang: 'English (US)', category: 'Podcast', gender: 'Female', desc: 'Warm, conversational, and perfect for storytelling.', text: 'Hey there! Welcome back to another episode. Today we are exploring the impact of AI on design.' },
-    { id: 'arthur', name: 'Arthur', lang: 'English (UK)', category: 'Audiobooks', gender: 'Male', desc: 'Deep, theatrical, and ideal for classic narrations.', text: 'It was a cold, bright day in April, and the clocks were striking thirteen.' },
-    { id: 'amara', name: 'Amara', lang: 'Hindi (IN)', category: 'E-Learning', gender: 'Female', desc: 'Clear, informative, and engaging for lessons.', text: 'नमस्ते! आज के पाठ में आपका स्वागत है। चलिए शुरू करते हैं।' },
-    { id: 'arjun', name: 'Arjun', lang: 'Tamil (IN)', category: 'Corporate', gender: 'Male', desc: 'Professional, articulate, and trustworthy.', text: 'அனைவருக்கும் வணக்கம். இன்றைய கூட்டத்திற்கு உங்களை வரவேற்கிறோம்.' },
-    { id: 'nimal', name: 'Nimal', lang: 'Sinhala (LK)', category: 'Entertainment', gender: 'Male', desc: 'Energetic, expressive, and perfect for promos.', text: 'ආයුබෝවන්! VoiceFlow AI වෙත ඔබව සාදරයෙන් පිළිගන්නවා. ඔබේ නිර්මාණ අදම අරඹන්න.' },
-    { id: 'priya', name: 'Priya', lang: 'English (IN)', category: 'E-Learning', gender: 'Female', desc: 'Gentle, friendly, and great for tutorial voiceovers.', text: 'Welcome to this training session. Let us go through the dashboard step-by-step.' }
+    { id: 'emma', name: 'Emma', lang: 'English (US)', flag: '🇺🇸', category: 'Podcast', gender: 'Female', desc: 'Warm, conversational, and perfect for storytelling.', text: 'Hey there! Welcome back to another episode. Today we are exploring the impact of AI on design.' },
+    { id: 'arthur', name: 'Arthur', lang: 'English (UK)', flag: '🇬🇧', category: 'Audiobooks', gender: 'Male', desc: 'Deep, theatrical, and ideal for classic narrations.', text: 'It was a cold, bright day in April, and the clocks were striking thirteen.' },
+    { id: 'amara', name: 'Amara', lang: 'Hindi (IN)', flag: '🇮🇳', category: 'E-Learning', gender: 'Female', desc: 'Clear, informative, and engaging for lessons.', text: 'नमस्ते! आज के पाठ में आपका स्वागत है। चलिए शुरू करते हैं।' },
+    { id: 'arjun', name: 'Arjun', lang: 'Tamil (IN)', flag: '🇮🇳', category: 'Corporate', gender: 'Male', desc: 'Professional, articulate, and trustworthy.', text: 'அனைவருக்கும் வணக்கம். இன்றைய கூட்டத்திற்கு உங்களை வரவேற்கிறோம்.' },
+    { id: 'nimal', name: 'Nimal', lang: 'Sinhala (LK)', flag: '🇱🇰', category: 'Entertainment', gender: 'Male', desc: 'Energetic, expressive, and perfect for promos.', text: 'ආයුබෝවන්! VoiceFlow AI වෙත ඔබව සාදරයෙන් පිළිගන්නවා. ඔබේ නිර්මාණ අදම අරඹන්න.' },
+    { id: 'priya', name: 'Priya', lang: 'English (IN)', flag: '🇮🇳', category: 'E-Learning', gender: 'Female', desc: 'Gentle, friendly, and great for tutorial voiceovers.', text: 'Welcome to this training session. Let us go through the dashboard step-by-step.' }
   ];
 
-  const filteredVoices = activeCategory === 'All' 
-    ? sampleVoices 
-    : sampleVoices.filter(v => v.category === activeCategory);
+  const filteredVoices = sampleVoices.filter(v => {
+    const matchesCategory = activeCategory === 'All' || v.category === activeCategory;
+    const matchesSearch = v.name.toLowerCase().includes(voiceSearchQuery.toLowerCase()) ||
+                          v.lang.toLowerCase().includes(voiceSearchQuery.toLowerCase()) ||
+                          v.desc.toLowerCase().includes(voiceSearchQuery.toLowerCase());
+    return matchesCategory && matchesSearch;
+  });
+
+  // --- Hero Interactive Mockup State ---
+  const [isHeroPlaying, setIsHeroPlaying] = useState(false);
 
   // --- Web Speech Synth voices caching ---
   useEffect(() => {
@@ -62,18 +87,29 @@ export default function Landing() {
     }
   }, []);
 
-  // --- TTS player execution ---
+  // Ensure speech cuts off if component unmounts
+  useEffect(() => {
+    return () => {
+      if ('speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
+      }
+      if (animationFrameRef.current) {
+        cancelAnimationFrame(animationFrameRef.current);
+      }
+    };
+  }, []);
+
+  // --- Local TTS player execution ---
   const speakText = (text, lang, speed = 1, pitch = 1, onStart, onEnd) => {
     if (!('speechSynthesis' in window)) {
       toast.error('Web Speech Synthesis is not supported in this browser.');
+      if (onEnd) onEnd();
       return;
     }
 
-    window.speechSynthesis.cancel(); // cancel any active reading
+    window.speechSynthesis.cancel();
 
     const utterance = new SpeechSynthesisUtterance(text);
-    
-    // Map internal lang tags to BCP-47 locales
     let locale = 'en-US';
     if (lang === 'sinhala' || lang.toLowerCase().includes('sinhala') || lang.toLowerCase().includes('lk')) {
       locale = 'si-LK';
@@ -91,7 +127,6 @@ export default function Landing() {
     utterance.rate = speed;
     utterance.pitch = pitch;
 
-    // Try finding matching voice
     const voices = window.speechSynthesis.getVoices();
     const matchingVoice = voices.find(v => v.lang.startsWith(locale)) ||
                           voices.find(v => v.lang.toLowerCase().includes(locale.split('-')[0]));
@@ -104,39 +139,197 @@ export default function Landing() {
     utterance.onend = onEnd;
     utterance.onerror = (e) => {
       console.error('Speech synthesis error', e);
-      onEnd();
+      if (onEnd) onEnd();
     };
 
     window.speechSynthesis.speak(utterance);
   };
 
-  const handlePlayDemo = () => {
+  // --- Web Audio Analyser Init ---
+  const initAudioContext = () => {
+    if (!audioContextRef.current) {
+      const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+      const ctx = new AudioContextClass();
+      const analyser = ctx.createAnalyser();
+      analyser.fftSize = 64; 
+      
+      const source = ctx.createMediaElementSource(audioRef.current);
+      source.connect(analyser);
+      analyser.connect(ctx.destination);
+
+      audioContextRef.current = ctx;
+      analyserRef.current = analyser;
+      sourceRef.current = source;
+    } else if (audioContextRef.current.state === 'suspended') {
+      audioContextRef.current.resume();
+    }
+  };
+
+  // --- Canvas visualizer animation loop ---
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    let width = canvas.width = canvas.offsetWidth * window.devicePixelRatio;
+    let height = canvas.height = canvas.offsetHeight * window.devicePixelRatio;
+
+    const resizeHandler = () => {
+      if (!canvas) return;
+      width = canvas.width = canvas.offsetWidth * window.devicePixelRatio;
+      height = canvas.height = canvas.offsetHeight * window.devicePixelRatio;
+    };
+    window.addEventListener('resize', resizeHandler);
+
+    let phase = 0;
+
+    const draw = () => {
+      animationFrameRef.current = requestAnimationFrame(draw);
+      ctx.clearRect(0, 0, width, height);
+
+      // If playing cloud audio with real AnalyserNode
+      if (isDemoPlaying && isCloudMode && analyserRef.current) {
+        const analyser = analyserRef.current;
+        const bufferLength = analyser.frequencyBinCount;
+        const dataArray = new Uint8Array(bufferLength);
+        analyser.getByteFrequencyData(dataArray);
+
+        const barWidth = (width / bufferLength) * 1.6;
+        let x = 0;
+
+        for (let i = 0; i < bufferLength; i++) {
+          const barHeight = (dataArray[i] / 255) * height * 0.85;
+
+          const gradient = ctx.createLinearGradient(0, height, 0, height - barHeight);
+          gradient.addColorStop(0, 'rgba(99, 102, 241, 0.2)');
+          gradient.addColorStop(0.5, 'rgba(168, 85, 247, 0.8)');
+          gradient.addColorStop(1, 'rgba(99, 102, 241, 1)');
+
+          ctx.fillStyle = gradient;
+          ctx.fillRect(x, height - barHeight, barWidth - 3, barHeight);
+          x += barWidth;
+        }
+      } 
+      // If playing local synthesis or demo voice sample (procedural wave animation)
+      else if (isDemoPlaying || playingVoiceId || isHeroPlaying) {
+        phase += 0.08 * demoSpeed;
+        
+        // Draw 3 layers of glowing waves
+        const waves = [
+          { amplitude: height * 0.25 * demoPitch, frequency: 0.008, color: 'rgba(99, 102, 241, 0.65)', speed: 1 },
+          { amplitude: height * 0.16 * demoPitch, frequency: 0.015, color: 'rgba(168, 85, 247, 0.55)', speed: -1.3 },
+          { amplitude: height * 0.10 * demoPitch, frequency: 0.022, color: 'rgba(236, 72, 153, 0.45)', speed: 2 }
+        ];
+
+        waves.forEach((wave) => {
+          ctx.beginPath();
+          ctx.lineWidth = 3.5;
+          ctx.strokeStyle = wave.color;
+          ctx.shadowBlur = 12;
+          ctx.shadowColor = wave.color;
+          
+          for (let x = 0; x < width; x++) {
+            const y = height / 2 + Math.sin(x * wave.frequency + phase * wave.speed) * wave.amplitude * Math.sin(phase * 0.15);
+            if (x === 0) {
+              ctx.moveTo(x, y);
+            } else {
+              ctx.lineTo(x, y);
+            }
+          }
+          ctx.stroke();
+        });
+        ctx.shadowBlur = 0; // reset shadow
+      } else {
+        // Idle state line
+        ctx.beginPath();
+        ctx.lineWidth = 2;
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
+        ctx.moveTo(0, height / 2);
+        ctx.lineTo(width, height / 2);
+        ctx.stroke();
+      }
+    };
+
+    draw();
+
+    return () => {
+      cancelAnimationFrame(animationFrameRef.current);
+      window.removeEventListener('resize', resizeHandler);
+    };
+  }, [isDemoPlaying, isCloudMode, demoSpeed, demoPitch, playingVoiceId, isHeroPlaying]);
+
+  // --- Handlers ---
+  const handlePlayDemo = async () => {
     if (!demoText.trim()) {
       toast.error('Please enter some text to speak');
       return;
     }
 
     if (isDemoPlaying) {
-      window.speechSynthesis.cancel();
+      if (isCloudMode) {
+        if (audioRef.current) {
+          audioRef.current.pause();
+          audioRef.current.currentTime = 0;
+        }
+      } else {
+        window.speechSynthesis.cancel();
+      }
       setIsDemoPlaying(false);
       return;
     }
 
-    setIsDemoSynthesizing(true);
-    speakText(
-      demoText,
-      demoLang,
-      demoSpeed,
-      demoPitch,
-      () => {
+    if (isCloudMode) {
+      if (!user) {
+        toast.error('Please login to use Cloud Neural Engine.');
+        return;
+      }
+      setIsDemoSynthesizing(true);
+      try {
+        initAudioContext();
+        const res = await ttsApi.generate(
+          demoText,
+          demoLang,
+          "natural",
+          demoSpeed,
+          demoPitch,
+          "Playground Demo"
+        );
+        const url = ttsApi.getAudioUrl(res.audio_url.split('/').pop());
+        setCloudAudioUrl(url);
         setIsDemoSynthesizing(false);
         setIsDemoPlaying(true);
-      },
-      () => {
+        
+        setTimeout(() => {
+          if (audioRef.current) {
+            audioRef.current.play().catch(e => {
+              console.error(e);
+              setIsDemoPlaying(false);
+            });
+          }
+        }, 50);
+      } catch (err) {
+        toast.error(err.message || 'Cloud generation failed.');
         setIsDemoSynthesizing(false);
         setIsDemoPlaying(false);
       }
-    );
+    } else {
+      setIsDemoSynthesizing(true);
+      speakText(
+        demoText,
+        demoLang,
+        demoSpeed,
+        demoPitch,
+        () => {
+          setIsDemoSynthesizing(false);
+          setIsDemoPlaying(true);
+        },
+        () => {
+          setIsDemoSynthesizing(false);
+          setIsDemoPlaying(false);
+        }
+      );
+    }
   };
 
   const handlePlayVoiceSample = (voice) => {
@@ -159,20 +352,29 @@ export default function Landing() {
     );
   };
 
-  // Ensure speech cuts off if component unmounts
-  useEffect(() => {
-    return () => {
-      if ('speechSynthesis' in window) {
-        window.speechSynthesis.cancel();
-      }
-    };
-  }, []);
+  const handlePlayHeroMockup = () => {
+    if (isHeroPlaying) {
+      window.speechSynthesis.cancel();
+      setIsHeroPlaying(false);
+      return;
+    }
+    setIsHeroPlaying(true);
+    speakText(
+      "Voice synthesis translates raw text characters into mathematical wave frequencies, resulting in highly articulation-rich and smooth speech.",
+      "english",
+      1.0,
+      1.2,
+      () => {},
+      () => setIsHeroPlaying(false)
+    );
+  };
 
   // --- Pricing State ---
   const [billingPeriod, setBillingPeriod] = useState('monthly');
 
-  // --- FAQ State ---
+  // --- FAQ State & Search ---
   const [expandedFaq, setExpandedFaq] = useState(null);
+  const [faqSearchQuery, setFaqSearchQuery] = useState('');
 
   const faqs = [
     { q: "How natural do the voices sound?", a: "VoiceFlow AI uses industry-leading neural synthesis technology to recreate human-like cadence, phrasing, and inflections. The natural voices adjust their emotion and tone based on context." },
@@ -181,11 +383,31 @@ export default function Landing() {
     { q: "How does the local try-out demo differ from the real backend service?", a: "The homepage demo runs on your browser's local SpeechSynthesis engine. Once you register and log in, the real dashboard connects to our cloud GPU-accelerated deep-learning clusters which sound substantially more lifelike and expressive." }
   ];
 
+  const filteredFaqs = faqs.filter(f => 
+    f.q.toLowerCase().includes(faqSearchQuery.toLowerCase()) || 
+    f.a.toLowerCase().includes(faqSearchQuery.toLowerCase())
+  );
+
   return (
     <div className="flex-1 flex flex-col items-center bg-grid-pattern relative">
+      {/* Hidden HTML5 Audio Element for Cloud Preview */}
+      <audio 
+        ref={audioRef}
+        src={cloudAudioUrl}
+        onEnded={() => setIsDemoPlaying(false)}
+        onError={() => {
+          setIsDemoPlaying(false);
+          toast.error("Audio playback error");
+        }}
+      />
+
       {/* Decorative Gradient Blobs */}
       <div className="absolute top-[10%] left-[5%] w-[35rem] h-[35rem] bg-primary/10 rounded-full blur-[150px] pointer-events-none -z-10 animate-float"></div>
       <div className="absolute top-[40%] right-[5%] w-[40rem] h-[40rem] bg-secondary/10 rounded-full blur-[180px] pointer-events-none -z-10 animate-float-delayed"></div>
+
+      {/* Grid Particle Overlays */}
+      <div className="absolute top-[15%] right-[20%] w-4 h-4 bg-primary/30 rounded-full blur-sm animate-pulse-slow"></div>
+      <div className="absolute top-[50%] left-[15%] w-6 h-6 bg-secondary/20 rounded-full blur-sm animate-pulse-slow" style={{ animationDelay: '2s' }}></div>
 
       {/* Hero Section */}
       <div className="max-w-7xl mx-auto px-4 pt-16 md:pt-24 pb-20 w-full grid lg:grid-cols-12 gap-12 items-center">
@@ -244,9 +466,9 @@ export default function Landing() {
             className="flex items-center gap-4 pt-6 text-gray-400 text-sm"
           >
             <div className="flex -space-x-2">
-              {[...Array(4)].map((_, i) => (
+              {['U', 'M', 'K', 'S'].map((char, i) => (
                 <div key={i} className="w-8 h-8 rounded-full bg-gradient-to-tr from-primary to-secondary border-2 border-background flex items-center justify-center text-[10px] text-white font-bold font-mono">
-                  {['U', 'M', 'K', 'S'][i]}
+                  {char}
                 </div>
               ))}
             </div>
@@ -267,7 +489,6 @@ export default function Landing() {
             transition={{ duration: 0.6, type: 'spring' }}
             className="glass-panel p-6 border border-white/10 shadow-[0_20px_50px_rgba(99,102,241,0.15)] relative overflow-hidden"
           >
-            {/* Ambient glows behind mockup */}
             <div className="absolute top-0 right-0 w-24 h-24 bg-secondary/20 rounded-full blur-2xl"></div>
             
             {/* Top Toolbar */}
@@ -307,15 +528,24 @@ export default function Landing() {
               </div>
             </div>
 
-            {/* Audio Wave Visualizer Panel */}
+            {/* Audio Wave Visualizer Panel (Functional) */}
             <div className="mt-6 pt-4 border-t border-white/5 flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <button className="w-10 h-10 rounded-full bg-gradient-to-tr from-primary to-secondary flex items-center justify-center text-white shadow-lg hover:scale-105 transition-transform duration-300">
-                  <Play size={16} fill="currentColor" className="ml-0.5" />
+                <button 
+                  onClick={handlePlayHeroMockup}
+                  className={`w-10 h-10 rounded-full flex items-center justify-center text-white shadow-lg hover:scale-105 transition-transform duration-300 ${
+                    isHeroPlaying ? 'bg-red-500' : 'bg-gradient-to-tr from-primary to-secondary'
+                  }`}
+                >
+                  {isHeroPlaying ? (
+                    <Square size={16} fill="currentColor" />
+                  ) : (
+                    <Play size={16} fill="currentColor" className="ml-0.5" />
+                  )}
                 </button>
                 <div>
                   <h4 className="text-xs text-white font-medium">preview_track_9.wav</h4>
-                  <p className="text-[10px] text-gray-500">Duration: 4.8s</p>
+                  <p className="text-[10px] text-gray-500">{isHeroPlaying ? 'Playing speech preview...' : 'Duration: 4.8s'}</p>
                 </div>
               </div>
 
@@ -324,13 +554,37 @@ export default function Landing() {
                 {[1, 2, 3, 4, 5, 6, 7].map((num) => (
                   <div 
                     key={num}
-                    className={`w-0.75 sm:w-1 bg-gradient-to-t from-primary to-secondary rounded-full animate-wave-bar wave-height-${num}`}
+                    className={`w-0.75 sm:w-1 bg-gradient-to-t from-primary to-secondary rounded-full ${
+                      isHeroPlaying ? 'animate-wave-bar' : 'opacity-40'
+                    } wave-height-${num}`}
                     style={{ animationDelay: `${num * 0.15}s` }}
                   ></div>
                 ))}
               </div>
             </div>
           </motion.div>
+        </div>
+      </div>
+
+      {/* Infinite Partners Logo Marquee */}
+      <div className="w-full py-10 border-t border-b border-white/5 bg-black/10 overflow-hidden relative mb-12">
+        <div className="absolute inset-y-0 left-0 w-24 bg-gradient-to-r from-background to-transparent z-10 pointer-events-none"></div>
+        <div className="absolute inset-y-0 right-0 w-24 bg-gradient-to-l from-background to-transparent z-10 pointer-events-none"></div>
+        <div className="flex animate-marquee whitespace-nowrap gap-16 text-gray-500 font-bold uppercase tracking-wider text-sm sm:text-base items-center">
+          <span>🎙️ VoiceCast.fm</span>
+          <span>📚 Narration Labs</span>
+          <span>🎓 EducateMe</span>
+          <span>🎬 IndieStudio</span>
+          <span>🎮 GameQuest Audio</span>
+          <span>🌐 GlobalReach Translate</span>
+          
+          {/* Loop copy for seamless slider effect */}
+          <span>🎙️ VoiceCast.fm</span>
+          <span>📚 Narration Labs</span>
+          <span>🎓 EducateMe</span>
+          <span>🎬 IndieStudio</span>
+          <span>🎮 GameQuest Audio</span>
+          <span>🌐 GlobalReach Translate</span>
         </div>
       </div>
 
@@ -346,8 +600,41 @@ export default function Landing() {
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
           transition={{ duration: 0.6 }}
-          className="glass-panel p-6 md:p-8 border border-white/10 shadow-2xl relative overflow-hidden"
+          className="glow-card p-6 md:p-8 shadow-2xl relative overflow-hidden"
         >
+          {/* Engine Mode Toggle */}
+          <div className="flex justify-between items-center pb-4 mb-6 border-b border-white/5">
+            <div className="flex items-center space-x-2">
+              <span className="text-sm font-semibold text-gray-400">Synthesis Engine:</span>
+              <span className={`text-xs px-2.5 py-0.5 rounded-full font-bold uppercase ${
+                isCloudMode ? 'bg-primary/20 text-primary border border-primary/30' : 'bg-white/5 text-gray-400'
+              }`}>
+                {isCloudMode ? 'Cloud Neural' : 'Local Browser'}
+              </span>
+            </div>
+            
+            <button
+              onClick={() => {
+                if (!user) {
+                  toast.error("Please log in to unlock our high-fidelity GPU Cloud Neural Engine!");
+                  return;
+                }
+                setIsCloudMode(!isCloudMode);
+              }}
+              className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all duration-300 ${
+                !user 
+                  ? 'bg-black/40 border-white/5 text-gray-500 cursor-not-allowed'
+                  : isCloudMode
+                    ? 'bg-primary/10 border-primary text-primary'
+                    : 'bg-white/5 border-white/10 text-gray-300 hover:bg-white/10'
+              }`}
+            >
+              <Cpu size={14} />
+              <span>{isCloudMode ? 'Switch to Local' : 'Switch to Cloud Neural'}</span>
+              {!user && <span className="text-[9px] bg-secondary/20 text-secondary px-1.5 py-0.5 rounded-full font-bold">PRO</span>}
+            </button>
+          </div>
+
           {/* Preset Chips */}
           <div className="flex flex-wrap items-center gap-2 mb-6">
             <span className="text-xs text-gray-500 font-semibold uppercase tracking-wider mr-2">Presets:</span>
@@ -406,12 +693,12 @@ export default function Landing() {
                       id="demo-lang-select"
                       value={demoLang}
                       onChange={(e) => setDemoLang(e.target.value)}
-                      className="w-full bg-black/45 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:ring-1 focus:ring-primary/50 appearance-none"
+                      className="w-full bg-black/45 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:ring-1 focus:ring-primary/50 appearance-none font-medium"
                     >
-                      <option value="english">English (US)</option>
-                      <option value="sinhala">Sinhala (Sri Lanka)</option>
-                      <option value="tamil">Tamil (India/SL)</option>
-                      <option value="hindi">Hindi (India)</option>
+                      <option value="english">🇺🇸 English (US)</option>
+                      <option value="sinhala">🇱🇰 Sinhala (Sri Lanka)</option>
+                      <option value="tamil">🇮🇳 Tamil (India/SL)</option>
+                      <option value="hindi">🇮🇳 Hindi (India)</option>
                     </select>
                     <Languages size={16} className="absolute right-3 top-2.5 text-gray-500 pointer-events-none" />
                   </div>
@@ -480,31 +767,14 @@ export default function Landing() {
             </div>
           </div>
 
-          {/* Soundwave Visualizer bottom strip */}
+          {/* Soundwave Canvas Visualizer strip */}
           <div className="mt-6 pt-4 border-t border-white/5 flex items-center gap-4">
             <span className="text-xs text-gray-500 font-medium">Output:</span>
-            <div className="flex-1 flex items-center justify-center gap-1.5 h-8 bg-black/20 rounded-lg px-4 overflow-hidden relative border border-white/5">
-              {isDemoPlaying ? (
-                <>
-                  <div className="absolute inset-0 bg-primary/5 animate-pulse"></div>
-                  {[...Array(28)].map((_, i) => {
-                    const h = [25, 60, 40, 80, 50, 75, 30, 90, 60, 35, 70, 45, 85, 55, 30, 65, 40, 75, 50, 90, 60, 35, 75, 45, 85, 50, 60, 30][i % 28];
-                    return (
-                      <div
-                        key={i}
-                        className="w-1 bg-primary rounded-full animate-wave-bar"
-                        style={{ 
-                          height: `${h}%`,
-                          animationDelay: `${i * 0.05}s`,
-                          animationDuration: `${0.8 + (i % 5) * 0.15}s`
-                        }}
-                      />
-                    );
-                  })}
-                </>
-              ) : (
-                <div className="text-xs text-gray-600 font-mono italic">Audio is idle. Press Play to start.</div>
+            <div className="flex-1 h-12 bg-black/20 rounded-lg overflow-hidden relative border border-white/5">
+              {isDemoPlaying && isCloudMode && (
+                <div className="absolute inset-0 bg-primary/5 animate-pulse pointer-events-none"></div>
               )}
+              <canvas ref={canvasRef} className="w-full h-full block" />
             </div>
             <Volume2 size={16} className={isDemoPlaying ? 'text-primary animate-bounce' : 'text-gray-600'} />
           </div>
@@ -517,21 +787,36 @@ export default function Landing() {
           <h2 className="text-3xl font-bold text-white mb-3">Explore the Voice Library</h2>
           <p className="text-gray-400 max-w-xl mx-auto">Listen to samples of professional voices tailored for different industries and content types.</p>
           
-          {/* Category tabs */}
-          <div className="flex flex-wrap items-center justify-center gap-2 mt-8">
-            {categories.map((cat) => (
-              <button
-                key={cat}
-                onClick={() => setActiveCategory(cat)}
-                className={`px-4 py-2 rounded-full text-xs sm:text-sm font-semibold transition-all duration-300 border ${
-                  activeCategory === cat
-                    ? 'bg-gradient-to-r from-primary to-secondary text-white border-transparent shadow-lg shadow-primary/20'
-                    : 'bg-white/5 text-gray-400 border-white/5 hover:bg-white/10 hover:text-white'
-                }`}
-              >
-                {cat}
-              </button>
-            ))}
+          {/* Search and Category Control panel */}
+          <div className="flex flex-col md:flex-row items-center justify-between gap-4 mt-8 bg-white/5 border border-white/10 rounded-2xl p-4 max-w-3xl mx-auto">
+            {/* Search Input */}
+            <div className="relative w-full md:w-72">
+              <input
+                type="text"
+                value={voiceSearchQuery}
+                onChange={(e) => setVoiceSearchQuery(e.target.value)}
+                placeholder="Search voices or languages..."
+                className="w-full bg-black/35 border border-white/10 rounded-xl pl-9 pr-4 py-2 text-sm text-white placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-primary"
+              />
+              <Search size={16} className="absolute left-3 top-2.5 text-gray-500" />
+            </div>
+
+            {/* Category tabs */}
+            <div className="flex flex-wrap items-center justify-center gap-1.5">
+              {categories.map((cat) => (
+                <button
+                  key={cat}
+                  onClick={() => setActiveCategory(cat)}
+                  className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-all duration-300 ${
+                    activeCategory === cat
+                      ? 'bg-gradient-to-r from-primary to-secondary text-white shadow-md shadow-primary/10'
+                      : 'text-gray-400 hover:text-white'
+                  }`}
+                >
+                  {cat}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
 
@@ -542,14 +827,14 @@ export default function Landing() {
               <motion.div
                 key={voice.id}
                 layout
-                initial={{ opacity: 0, scale: 0.9 }}
+                initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.9 }}
+                exit={{ opacity: 0, scale: 0.95 }}
                 transition={{ duration: 0.3 }}
-                className={`glass-panel p-5 border transition-all duration-300 relative ${
+                className={`glow-card p-5 border transition-all duration-300 relative ${
                   playingVoiceId === voice.id 
-                    ? 'border-primary bg-primary/5 shadow-lg shadow-primary/10'
-                    : 'border-white/5 hover:border-white/20'
+                    ? 'border-primary/50 shadow-lg shadow-primary/15'
+                    : 'border-white/5'
                 }`}
               >
                 <div className="flex items-start justify-between mb-4">
@@ -564,7 +849,7 @@ export default function Landing() {
                           {voice.category}
                         </span>
                       </h3>
-                      <p className="text-xs text-gray-500 font-medium">{voice.lang} • {voice.gender}</p>
+                      <p className="text-xs text-gray-500 font-medium">{voice.flag} {voice.lang} • {voice.gender}</p>
                     </div>
                   </div>
 
@@ -586,15 +871,15 @@ export default function Landing() {
 
                 <p className="text-sm text-gray-400 leading-relaxed mb-4">{voice.desc}</p>
 
-                {/* Animated voice wave visualizer */}
+                {/* Simulated Waveform Visualizer on Voice Cards */}
                 {playingVoiceId === voice.id && (
-                  <div className="h-4 flex items-end gap-0.5 bg-black/25 rounded p-1">
-                    {[...Array(12)].map((_, i) => (
+                  <div className="h-5 flex items-end gap-1 bg-black/25 rounded p-1.5 border border-white/5">
+                    {[...Array(16)].map((_, i) => (
                       <div
                         key={i}
                         className="w-1 bg-primary rounded-full animate-wave-bar flex-1"
                         style={{ 
-                          height: `${20 + Math.sin(i * 1.2) * 60}%`, 
+                          height: `${30 + Math.sin(i * 1.5) * 60}%`, 
                           animationDelay: `${i * 0.08}s` 
                         }}
                       />
@@ -617,10 +902,10 @@ export default function Landing() {
         {/* Bento Grid */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 auto-rows-[220px]">
           {/* Card 1: Large Box - Neural Synthesis */}
-          <div className="md:col-span-2 md:row-span-2 glass-panel p-8 border border-white/5 flex flex-col justify-between relative overflow-hidden group">
+          <div className="md:col-span-2 md:row-span-2 glow-card p-8 flex flex-col justify-between relative overflow-hidden group">
             <div className="absolute top-0 right-0 w-64 h-64 bg-primary/10 rounded-full blur-[100px] pointer-events-none group-hover:bg-primary/20 transition-colors duration-500"></div>
             
-            <div className="w-12 h-12 rounded-xl bg-primary/15 border border-primary/20 flex items-center justify-center text-primary mb-6">
+            <div className="w-12 h-12 rounded-xl bg-primary/15 border border-primary/20 flex items-center justify-center text-primary mb-6 transition-transform group-hover:scale-110 duration-300">
               <Zap size={24} />
             </div>
 
@@ -648,9 +933,9 @@ export default function Landing() {
           </div>
 
           {/* Card 2: Regular Box - Languages */}
-          <div className="glass-panel p-6 border border-white/5 flex flex-col justify-between group">
+          <div className="glow-card p-6 flex flex-col justify-between group">
             <div className="flex items-center justify-between">
-              <div className="w-10 h-10 rounded-xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-purple-400">
+              <div className="w-10 h-10 rounded-xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-purple-400 group-hover:rotate-12 transition-transform duration-300">
                 <Languages size={20} />
               </div>
               <span className="text-[10px] text-gray-500 uppercase tracking-wider font-semibold">Native Support</span>
@@ -665,9 +950,9 @@ export default function Landing() {
           </div>
 
           {/* Card 3: Regular Box - Control parameters */}
-          <div className="glass-panel p-6 border border-white/5 flex flex-col justify-between group">
+          <div className="glow-card p-6 flex flex-col justify-between group">
             <div className="flex items-center justify-between">
-              <div className="w-10 h-10 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-400">
+              <div className="w-10 h-10 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-400 group-hover:scale-110 transition-transform duration-300">
                 <Settings2 size={20} />
               </div>
               <span className="text-[10px] text-gray-500 uppercase tracking-wider font-semibold">Granular UI</span>
@@ -682,9 +967,9 @@ export default function Landing() {
           </div>
 
           {/* Card 4: Full Row on Mobile, 1 span in bento - Exports */}
-          <div className="glass-panel p-6 border border-white/5 flex flex-col justify-between group">
+          <div className="glow-card p-6 flex flex-col justify-between group">
             <div className="flex items-center justify-between">
-              <div className="w-10 h-10 rounded-xl bg-green-500/10 border border-green-500/20 flex items-center justify-center text-green-400">
+              <div className="w-10 h-10 rounded-xl bg-green-500/10 border border-green-500/20 flex items-center justify-center text-green-400 group-hover:translate-y-1 transition-transform duration-300">
                 <Download size={20} />
               </div>
               <span className="text-[10px] text-gray-500 uppercase tracking-wider font-semibold">Formats</span>
@@ -699,7 +984,7 @@ export default function Landing() {
           </div>
 
           {/* Card 5: Large Box - Dashboard Mockup Details */}
-          <div className="md:col-span-2 glass-panel p-6 border border-white/5 flex flex-col justify-between group relative overflow-hidden">
+          <div className="md:col-span-2 glow-card p-6 flex flex-col justify-between group relative overflow-hidden">
             <div className="absolute top-0 right-0 w-32 h-32 bg-secondary/15 rounded-full blur-[80px] pointer-events-none"></div>
             
             <div className="flex items-center justify-between mb-4">
@@ -727,7 +1012,6 @@ export default function Landing() {
         </div>
 
         <div className="grid md:grid-cols-3 gap-12 relative">
-          {/* Connector Line for Desktop */}
           <div className="hidden md:block absolute top-[2.5rem] left-[15%] right-[15%] h-0.5 bg-gradient-to-r from-primary/10 via-secondary/20 to-primary/10 border-t border-dashed border-white/10 -z-10"></div>
 
           {/* Step 1 */}
@@ -769,6 +1053,58 @@ export default function Landing() {
         </div>
       </section>
 
+      {/* Trust & Testimonials */}
+      <section className="max-w-6xl mx-auto w-full px-4 py-16 border-t border-white/5">
+        <div className="text-center mb-12">
+          <h2 className="text-3xl font-bold text-white mb-3">Loved by Creators Worldwide</h2>
+          <p className="text-gray-400 max-w-xl mx-auto">Hear how podcasters, course authors, and developers save hundreds of hours with VoiceFlow.</p>
+        </div>
+        <div className="grid md:grid-cols-3 gap-6">
+          <div className="glow-card p-6 flex flex-col justify-between">
+            <p className="text-gray-300 text-sm leading-relaxed italic">
+              "The Sinhala and Tamil natural engines are mind-blowing. Our e-learning courses feel completely native and clear now."
+            </p>
+            <div className="mt-4 flex items-center gap-3">
+              <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center font-bold text-xs text-primary">
+                SP
+              </div>
+              <div>
+                <h4 className="text-white text-xs font-semibold">Suresh Perera</h4>
+                <p className="text-[10px] text-gray-500">CTO, EduLanka Ltd.</p>
+              </div>
+            </div>
+          </div>
+          <div className="glow-card p-6 flex flex-col justify-between border-primary/20">
+            <p className="text-gray-300 text-sm leading-relaxed italic">
+              "We synthesize hours of audiobook content daily. The speed customization and WAV export saves us a massive amount of post-production work."
+            </p>
+            <div className="mt-4 flex items-center gap-3">
+              <div className="w-8 h-8 rounded-full bg-secondary/20 flex items-center justify-center font-bold text-xs text-secondary">
+                AM
+              </div>
+              <div>
+                <h4 className="text-white text-xs font-semibold">Alice Miller</h4>
+                <p className="text-[10px] text-gray-500">Narrator, NovelAudio</p>
+              </div>
+            </div>
+          </div>
+          <div className="glow-card p-6 flex flex-col justify-between">
+            <p className="text-gray-300 text-sm leading-relaxed italic">
+              "Setting up the API took less than 15 minutes. High bitrate MP3 outputs stream instantly to our customer dashboard."
+            </p>
+            <div className="mt-4 flex items-center gap-3">
+              <div className="w-8 h-8 rounded-full bg-purple-500/20 flex items-center justify-center font-bold text-xs text-purple-400">
+                DK
+              </div>
+              <div>
+                <h4 className="text-white text-xs font-semibold">Devin Kumar</h4>
+                <p className="text-[10px] text-gray-500">Founder, Saasify App</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* Pricing Cards */}
       <section id="pricing" className="max-w-6xl mx-auto w-full px-4 py-16 border-t border-white/5">
         <div className="text-center mb-12">
@@ -804,7 +1140,7 @@ export default function Landing() {
         {/* Pricing Cards Grid */}
         <div className="grid md:grid-cols-3 gap-8 items-stretch">
           {/* Free Plan */}
-          <div className="glass-panel p-8 border border-white/5 flex flex-col justify-between relative">
+          <div className="glow-card p-8 flex flex-col justify-between relative border border-white/5">
             <div>
               <h3 className="text-lg font-bold text-gray-300 mb-2">Free Starter</h3>
               <p className="text-xs text-gray-500 mb-6">Perfect for evaluating speech quality.</p>
@@ -825,7 +1161,7 @@ export default function Landing() {
                   <Check size={16} className="text-primary shrink-0" />
                   <span>Access standard voices</span>
                 </li>
-                <li className="flex items-center gap-2 flex-1">
+                <li className="flex items-center gap-2">
                   <Check size={16} className="text-primary shrink-0" />
                   <span>MP3 high quality downloads</span>
                 </li>
@@ -842,7 +1178,7 @@ export default function Landing() {
           </div>
 
           {/* Pro Plan (Glowing/Popular) */}
-          <div className="glass-panel p-8 border-2 border-primary bg-gradient-to-b from-primary/5 via-surface/60 to-surface/60 flex flex-col justify-between relative shadow-xl shadow-primary/10">
+          <div className="glow-card p-8 border-2 border-primary bg-gradient-to-b from-primary/5 to-surface/60 flex flex-col justify-between relative shadow-xl shadow-primary/10">
             <span className="absolute -top-3.5 right-6 bg-gradient-to-r from-primary to-secondary text-white text-[10px] uppercase font-bold tracking-wider px-3.5 py-1 rounded-full shadow-md">
               Most Popular
             </span>
@@ -890,7 +1226,7 @@ export default function Landing() {
           </div>
 
           {/* Enterprise Plan */}
-          <div className="glass-panel p-8 border border-white/5 flex flex-col justify-between relative">
+          <div className="glow-card p-8 flex flex-col justify-between relative border border-white/5">
             <div>
               <h3 className="text-lg font-bold text-gray-300 mb-2">Enterprise</h3>
               <p className="text-xs text-gray-500 mb-6">Custom scaling for production apps.</p>
@@ -935,49 +1271,67 @@ export default function Landing() {
       <section className="max-w-4xl mx-auto w-full px-4 py-16 border-t border-white/5">
         <div className="text-center mb-12">
           <h2 className="text-3xl font-bold text-white mb-3">Frequently Asked Questions</h2>
-          <p className="text-gray-400 max-w-xl mx-auto">Still have queries? Find quick answers related to our speech platforms.</p>
+          <p className="text-gray-400 max-w-xl mx-auto mb-6">Still have queries? Find quick answers related to our speech platforms.</p>
+          
+          {/* FAQ Search Bar */}
+          <div className="relative max-w-md mx-auto">
+            <input
+              type="text"
+              value={faqSearchQuery}
+              onChange={(e) => setFaqSearchQuery(e.target.value)}
+              placeholder="Search FAQs..."
+              className="w-full bg-white/5 border border-white/10 rounded-xl pl-10 pr-4 py-2 text-sm text-white placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-primary"
+            />
+            <Search size={16} className="absolute left-3.5 top-3 text-gray-500" />
+          </div>
         </div>
 
         <div className="space-y-4">
-          {faqs.map((faq, index) => (
-            <div 
-              key={index}
-              className="glass-panel border border-white/5 overflow-hidden transition-all duration-300"
-            >
-              <button
-                id={`faq-btn-${index}`}
-                onClick={() => setExpandedFaq(expandedFaq === index ? null : index)}
-                className="w-full text-left px-6 py-5 flex items-center justify-between hover:bg-white/5 transition-colors focus:outline-none"
+          <AnimatePresence>
+            {filteredFaqs.map((faq, index) => (
+              <motion.div 
+                key={index}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                className="glow-card border border-white/5 overflow-hidden transition-all duration-300"
               >
-                <span className="font-semibold text-white text-base md:text-lg">{faq.q}</span>
-                <ChevronDown 
-                  size={18} 
-                  className={`text-gray-400 transition-transform duration-300 ${
-                    expandedFaq === index ? 'rotate-180 text-primary' : ''
-                  }`} 
-                />
-              </button>
+                <button
+                  id={`faq-btn-${index}`}
+                  onClick={() => setExpandedFaq(expandedFaq === index ? null : index)}
+                  className="w-full text-left px-6 py-5 flex items-center justify-between hover:bg-white/5 transition-colors focus:outline-none"
+                >
+                  <span className="font-semibold text-white text-base md:text-lg">{faq.q}</span>
+                  <ChevronDown 
+                    size={18} 
+                    className={`text-gray-400 transition-transform duration-300 ${
+                      expandedFaq === index ? 'rotate-180 text-primary' : ''
+                    }`} 
+                  />
+                </button>
 
-              <div 
-                className={`transition-all duration-300 ease-in-out ${
-                  expandedFaq === index 
-                    ? 'max-h-[200px] border-t border-white/5 opacity-100' 
-                    : 'max-h-0 opacity-0 pointer-events-none'
-                }`}
-              >
-                <div className="p-6 text-gray-400 text-sm md:text-base leading-relaxed bg-black/10">
-                  {faq.a}
-                </div>
-              </div>
-            </div>
-          ))}
+                <motion.div 
+                  initial={false}
+                  animate={{ height: expandedFaq === index ? "auto" : 0 }}
+                  transition={{ duration: 0.3, ease: "easeInOut" }}
+                  className="overflow-hidden"
+                >
+                  <div className="p-6 text-gray-400 text-sm md:text-base leading-relaxed bg-black/10 border-t border-white/5">
+                    {faq.a}
+                  </div>
+                </motion.div>
+              </motion.div>
+            ))}
+          </AnimatePresence>
+          {filteredFaqs.length === 0 && (
+            <p className="text-center text-gray-500 text-sm italic py-4">No matching questions found.</p>
+          )}
         </div>
       </section>
 
       {/* Glowing CTA Footer Banner */}
       <section className="max-w-6xl mx-auto w-full px-4 py-16 mb-8">
         <div className="relative rounded-3xl overflow-hidden border border-white/10 p-8 md:p-12 text-center bg-gradient-to-tr from-surface/90 to-primary/10 shadow-[0_20px_50px_rgba(99,102,241,0.1)]">
-          {/* Animated decorative ring background */}
           <div className="absolute -bottom-1/2 -right-1/4 w-96 h-96 bg-primary/20 rounded-full blur-[100px] animate-float"></div>
           <div className="absolute -top-1/2 -left-1/4 w-96 h-96 bg-secondary/15 rounded-full blur-[100px] animate-float-delayed"></div>
 
