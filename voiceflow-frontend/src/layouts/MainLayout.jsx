@@ -1,13 +1,14 @@
 import { useState, useEffect } from 'react';
 import { Outlet, Link, useNavigate } from 'react-router-dom';
-import { Mic2, LogOut, LayoutDashboard, Shield } from 'lucide-react';
-import { motion } from 'framer-motion';
+import { Mic2, LogOut, LayoutDashboard, Shield, Menu, X } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
 import { getUser } from '../api';
 
 export default function MainLayout() {
   const [user, setUser] = useState(getUser());
   const [isAdminSession, setIsAdminSession] = useState(localStorage.getItem('voiceflow_admin_session') === 'true');
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -48,7 +49,8 @@ export default function MainLayout() {
               </span>
             </Link>
             
-            <div className="flex items-center space-x-4">
+            {/* Desktop Navigation */}
+            <div className="hidden md:flex items-center space-x-4">
               {user ? (
                 <>
                   <Link 
@@ -89,8 +91,91 @@ export default function MainLayout() {
                 </>
               )}
             </div>
+
+            {/* Mobile Menu Button */}
+            <div className="flex md:hidden">
+              <button
+                onClick={() => setIsMenuOpen(!isMenuOpen)}
+                className="inline-flex items-center justify-center p-2 rounded-lg text-gray-400 hover:text-white hover:bg-white/5 focus:outline-none transition-colors"
+                aria-label="Toggle menu"
+              >
+                {isMenuOpen ? <X size={24} /> : <Menu size={24} />}
+              </button>
+            </div>
           </div>
         </div>
+
+        {/* Mobile Menu Panel */}
+        <AnimatePresence>
+          {isMenuOpen && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+              transition={{ duration: 0.2 }}
+              className="md:hidden border-t border-white/5 bg-background/95 backdrop-blur-xl overflow-hidden"
+            >
+              <div className="px-4 py-4 space-y-3 flex flex-col">
+                {user ? (
+                  <>
+                    <Link 
+                      to="/dashboard/generate" 
+                      onClick={() => setIsMenuOpen(false)}
+                      className="flex items-center space-x-2 py-2 text-gray-300 hover:text-white transition-colors font-medium text-base"
+                    >
+                      <LayoutDashboard size={18} />
+                      <span>Dashboard</span>
+                    </Link>
+                    {isAdminSession && (
+                      <Link 
+                        to="/admin" 
+                        onClick={() => setIsMenuOpen(false)}
+                        className="flex items-center space-x-2 py-2 text-primary hover:text-primary/80 transition-colors font-semibold text-base"
+                      >
+                        <Shield size={18} />
+                        <span>Admin Panel</span>
+                      </Link>
+                    )}
+                    <button 
+                      onClick={() => {
+                        setIsMenuOpen(false);
+                        handleLogout();
+                      }}
+                      className="flex items-center justify-center space-x-2 w-full py-2.5 bg-red-500/10 hover:bg-red-500/20 text-red-500 rounded-xl transition-colors duration-300 font-medium text-sm"
+                    >
+                      <LogOut size={16} />
+                      <span>Logout</span>
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <Link 
+                      to="/admin/login" 
+                      onClick={() => setIsMenuOpen(false)}
+                      className="text-primary hover:text-primary/80 transition-colors font-semibold text-base py-2"
+                    >
+                      Admin Portal
+                    </Link>
+                    <Link 
+                      to="/login" 
+                      onClick={() => setIsMenuOpen(false)}
+                      className="text-gray-300 hover:text-white transition-colors font-medium text-base py-2"
+                    >
+                      Log in
+                    </Link>
+                    <Link 
+                      to="/register" 
+                      onClick={() => setIsMenuOpen(false)}
+                      className="btn-primary text-base py-2.5 text-center mt-2"
+                    >
+                      Get Started
+                    </Link>
+                  </>
+                )}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </nav>
 
       <main className="flex-grow flex flex-col">
