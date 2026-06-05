@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from pydantic import BaseModel, EmailStr
 from datetime import timedelta
+import random
 
 from database import get_db, User
 from auth import (
@@ -24,6 +25,16 @@ class RegisterRequest(BaseModel):
 class LoginRequest(BaseModel):
     email: EmailStr
     password: str
+
+
+class ForgotPasswordRequest(BaseModel):
+    email: EmailStr
+
+
+class ResetPasswordRequest(BaseModel):
+    email: EmailStr
+    code: str
+    new_password: str
 
 
 class AuthResponse(BaseModel):
@@ -99,3 +110,60 @@ def get_me(current_user: User = Depends(get_current_user)):
         "created_at": current_user.created_at,
         "is_admin": current_user.is_admin,
     }
+
+
+# In-memory storage for reset codes
+RESET_CODES = {}
+
+
+@router.post("/forgot-password")
+def forgot_password(payload: ForgotPasswordRequest, db: Session = Depends(get_db)):
+    user = db.query(User).filter(User.email == payload.email).first()
+    if not user:
+        # For security, return success representation but do not store a real code
+        return {
+            "detail": "If this email is registered, a password reset code has been sent.",
+            "demo_code": "VF-9999"
+        }
+
+    # Generate a dummy code VF-XXXX (between 1000 and 9999)
+    code = f"VF-{random.randint(1000, 9999)}"
+    RESET_CODES[payload.email.lower()] = code
+
+    return {
+        "detail": "Password reset code generated successfully.",
+        "demo_code": code
+    }
+
+
+@router.post("/reset-password")
+def reset_password(payload: ResetPasswordRequest, db: Session = Depends(get_db)):
+    email_key = payload.email.lower()
+    if email_key not in RESET_CODES or RESET_CODES[email_key] != payload.code:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid or expired reset code."
+        )
+
+    user = db.query(User).filter(User.email == payload.email).first()
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found."
+        )
+
+    if len(payload.new_password) < 8:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="New password must be at least 8 characters long."
+        )
+
+    # Hash and save
+    user.hashed_password = hash_password(payload.new_password)
+    db.commit()
+
+    # Clean up reset code
+    del RESET_CODES[email_key]
+
+    return {"detail": "Password has been reset successfully."}
+

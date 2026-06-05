@@ -57,6 +57,18 @@ export const authApi = {
     }),
 
   me: () => request('/api/auth/me'),
+
+  forgotPassword: (email) =>
+    request('/api/auth/forgot-password', {
+      method: 'POST',
+      body: JSON.stringify({ email }),
+    }),
+
+  resetPassword: (email, code, new_password) =>
+    request('/api/auth/reset-password', {
+      method: 'POST',
+      body: JSON.stringify({ email, code, new_password }),
+    }),
 };
 
 // ─── TTS API ─────────────────────────────────────────────────────────────────

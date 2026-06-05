@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Mail, Lock, Mic2, Eye, EyeOff, Sparkles, Volume2, ArrowRight } from 'lucide-react';
+import { Mail, Lock, Mic2, Eye, EyeOff, Sparkles, Volume2, ArrowRight, Mic } from 'lucide-react';
 import { motion } from 'framer-motion';
 import toast from 'react-hot-toast';
 import { authApi, setToken, setUser } from '../api';
@@ -13,6 +13,126 @@ export default function Login() {
   const [isLoading, setIsLoading] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
   const navigate = useNavigate();
+
+  // Forgot Password States
+  const [showForgotModal, setShowForgotModal] = useState(false);
+  const [forgotEmail, setForgotEmail] = useState('');
+  const [resetCode, setResetCode] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [forgotStep, setForgotStep] = useState(1);
+  const [isSendingForgot, setIsSendingForgot] = useState(false);
+  const [isListening, setIsListening] = useState(false);
+
+  // Voice Assistant Speech Recognition
+  const startVoiceAssistant = () => {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      toast.error("Speech recognition is not supported in this browser. Please use Chrome, Edge, or Safari.");
+      return;
+    }
+
+    const recognition = new SpeechRecognition();
+    recognition.lang = 'en-US';
+    recognition.interimResults = false;
+    recognition.maxAlternatives = 1;
+
+    recognition.onstart = () => {
+      setIsListening(true);
+      toast.success("Voice assistant active. Say 'forgot password'...", { id: 'voice-active', duration: 4000 });
+    };
+
+    recognition.onresult = (event) => {
+      const transcript = event.results[0][0].transcript.toLowerCase();
+      console.log('Voice assistant transcript:', transcript);
+      
+      if (
+        transcript.includes('forgot password') || 
+        transcript.includes('lost password') || 
+        transcript.includes('reset password') || 
+        transcript.includes('forgot my password')
+      ) {
+        toast.success('Voice command recognized: "Forgot password"', { icon: '🎙️' });
+        // Prefill email if they had typed one on the main form
+        setForgotEmail(email);
+        setForgotStep(1);
+        setShowForgotModal(true);
+        
+        // Speak feedback to user
+        if ('speechSynthesis' in window) {
+          const utterance = new SpeechSynthesisUtterance("Opening password recovery helper.");
+          utterance.rate = 1.0;
+          window.speechSynthesis.speak(utterance);
+        }
+      } else {
+        toast.error(`Command not recognized: "${transcript}". Try saying "forgot password".`);
+      }
+    };
+
+    recognition.onerror = (event) => {
+      console.error('Speech recognition error', event.error);
+      if (event.error === 'not-allowed') {
+        toast.error("Microphone permission denied. Please enable microphone access in your browser.");
+      } else {
+        toast.error("Speech recognition error. Please try again.");
+      }
+      setIsListening(false);
+    };
+
+    recognition.onend = () => {
+      setIsListening(false);
+    };
+
+    recognition.start();
+  };
+
+  const handleForgotPassword = async (e) => {
+    e.preventDefault();
+    if (!forgotEmail) return;
+    setIsSendingForgot(true);
+    try {
+      const res = await authApi.forgotPassword(forgotEmail);
+      toast.success(res.detail, { duration: 6000 });
+      if (res.demo_code) {
+        toast(`Demo reset code: ${res.demo_code}`, {
+          icon: '🔑',
+          duration: 10000,
+          style: {
+            background: '#13131a',
+            color: '#fff',
+            border: '1px solid #a855f7'
+          }
+        });
+        setResetCode(res.demo_code); // Prefill for convenience
+      }
+      setForgotStep(2);
+    } catch (err) {
+      toast.error(err.message || "Failed to initiate password reset.");
+    } finally {
+      setIsSendingForgot(false);
+    }
+  };
+
+  const handleResetPassword = async (e) => {
+    e.preventDefault();
+    if (!forgotEmail || !resetCode || !newPassword) return;
+    setIsSendingForgot(true);
+    try {
+      await authApi.resetPassword(forgotEmail, resetCode, newPassword);
+      toast.success("Password reset successfully! You can now log in.");
+      setShowForgotModal(false);
+      setPassword(newPassword);
+      setEmail(forgotEmail);
+      setForgotEmail('');
+      setResetCode('');
+      setNewPassword('');
+      setForgotStep(1);
+    } catch (err) {
+      toast.error(err.message || "Failed to reset password. Check your code.");
+    } finally {
+      setIsSendingForgot(false);
+    }
+  };
 
   // SEO Page Title
   useEffect(() => {
@@ -151,9 +271,33 @@ export default function Login() {
                   />
                   <span>Remember me</span>
                 </label>
-                <span className="hover:text-white cursor-pointer transition-colors duration-300">
-                  Forgot password?
-                </span>
+                <div className="flex items-center space-x-2">
+                  <button
+                    type="button"
+                    onClick={startVoiceAssistant}
+                    className={`relative p-1.5 rounded-full transition-all duration-300 ${
+                      isListening 
+                        ? 'bg-red-500 text-white animate-pulse shadow-lg shadow-red-500/50 scale-110' 
+                        : 'bg-white/5 text-gray-400 hover:text-white hover:bg-white/10 border border-white/10'
+                    }`}
+                    title="Voice assistant: Click and say 'forgot password'"
+                  >
+                    <Mic size={12} className={isListening ? "animate-bounce" : ""} />
+                    {isListening && (
+                      <span className="absolute -inset-1 rounded-full border border-red-500/50 animate-ping pointer-events-none"></span>
+                    )}
+                  </button>
+                  <span 
+                    onClick={() => {
+                      setForgotEmail(email);
+                      setForgotStep(1);
+                      setShowForgotModal(true);
+                    }}
+                    className="hover:text-white cursor-pointer transition-colors duration-300"
+                  >
+                    Forgot password?
+                  </span>
+                </div>
               </motion.div>
 
               <motion.div variants={itemVariants}>
@@ -278,6 +422,135 @@ export default function Login() {
           </div>
         </div>
       </motion.div>
+
+      {/* Forgot Password Modal */}
+      {showForgotModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-in fade-in duration-300">
+          <motion.div
+            initial={{ scale: 0.95, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            className="w-full max-w-md p-6 rounded-3xl glass-panel border border-white/15 shadow-2xl relative"
+          >
+            <button
+              onClick={() => setShowForgotModal(false)}
+              className="absolute top-4 right-4 text-gray-400 hover:text-white transition-colors text-sm font-semibold bg-white/5 hover:bg-white/10 w-8 h-8 rounded-full flex items-center justify-center border border-white/10"
+            >
+              ✕
+            </button>
+            
+            <div className="flex items-center space-x-2.5 mb-5">
+              <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-[#db2777] to-[#a855f7] flex items-center justify-center text-white shadow-md shadow-pink-500/25">
+                <Lock size={16} />
+              </div>
+              <h2 className="text-xl font-black text-white tracking-tight">Password Recovery</h2>
+            </div>
+            
+            {forgotStep === 1 ? (
+              <form onSubmit={handleForgotPassword} className="space-y-4">
+                <p className="text-xs text-gray-400 leading-relaxed">
+                  Enter your email address and we'll generate a secure reset code for your account.
+                </p>
+                
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold text-gray-400" htmlFor="forgot-email">Email Address</label>
+                  <div className="relative group">
+                    <span className="absolute inset-y-0 left-0 flex items-center pl-4 text-gray-500 group-focus-within:text-secondary">
+                      <Mail size={16} />
+                    </span>
+                    <input
+                      type="email"
+                      required
+                      id="forgot-email"
+                      value={forgotEmail}
+                      onChange={(e) => setForgotEmail(e.target.value)}
+                      className="w-full bg-white/5 border border-white/10 rounded-full pl-11 pr-6 py-3 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-secondary/40 focus:border-transparent transition-all duration-300 text-sm focus:bg-white/10"
+                      placeholder="name@example.com"
+                    />
+                  </div>
+                </div>
+                
+                <button
+                  type="submit"
+                  disabled={isSendingForgot}
+                  className="w-full py-3.5 bg-gradient-to-r from-[#c084fc] to-[#db2777] hover:from-[#a855f7] hover:to-[#be185d] text-white rounded-full font-bold transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed text-sm flex items-center justify-center space-x-2 mt-4 shadow-lg shadow-pink-500/10 hover:shadow-pink-500/20 active:scale-[0.98]"
+                >
+                  {isSendingForgot ? (
+                    <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                  ) : (
+                    <span>Send Reset Code</span>
+                  )}
+                </button>
+              </form>
+            ) : (
+              <form onSubmit={handleResetPassword} className="space-y-4">
+                <p className="text-xs text-gray-400 leading-relaxed font-semibold text-secondary animate-pulse">
+                  Verification code generated! Enter it below along with your new password.
+                </p>
+                
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold text-gray-400" htmlFor="reset-code">Reset Code</label>
+                  <input
+                    type="text"
+                    required
+                    id="reset-code"
+                    placeholder="e.g. VF-1234"
+                    value={resetCode}
+                    onChange={(e) => setResetCode(e.target.value)}
+                    className="w-full bg-white/5 border border-white/10 rounded-full px-6 py-3 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-secondary/40 focus:border-transparent transition-all duration-300 text-sm focus:bg-white/10 font-mono tracking-wider text-center"
+                  />
+                </div>
+                
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold text-gray-400" htmlFor="new-password">New Password</label>
+                  <div className="relative group">
+                    <span className="absolute inset-y-0 left-0 flex items-center pl-4 text-gray-500 group-focus-within:text-secondary">
+                      <Lock size={16} />
+                    </span>
+                    <input
+                      type={showNewPassword ? "text" : "password"}
+                      required
+                      id="new-password"
+                      value={newPassword}
+                      onChange={(e) => setNewPassword(e.target.value)}
+                      className="w-full bg-white/5 border border-white/10 rounded-full pl-11 pr-12 py-3 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-secondary/40 focus:border-transparent transition-all duration-300 text-sm focus:bg-white/10"
+                      placeholder="At least 8 characters"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowNewPassword(!showNewPassword)}
+                      className="absolute inset-y-0 right-0 flex items-center pr-4 text-gray-500 hover:text-white transition-colors duration-300"
+                      tabIndex="-1"
+                    >
+                      {showNewPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                    </button>
+                  </div>
+                </div>
+                
+                <div className="flex space-x-3 mt-5">
+                  <button
+                    type="button"
+                    onClick={() => setForgotStep(1)}
+                    className="w-1/3 py-3 bg-white/5 hover:bg-white/10 border border-white/10 text-white rounded-full font-bold transition-all duration-300 text-sm active:scale-[0.98]"
+                  >
+                    Back
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isSendingForgot}
+                    className="w-2/3 py-3.5 bg-gradient-to-r from-[#c084fc] to-[#db2777] hover:from-[#a855f7] hover:to-[#be185d] text-white rounded-full font-bold transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed text-sm flex items-center justify-center active:scale-[0.98]"
+                  >
+                    {isSendingForgot ? (
+                      <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                    ) : (
+                      <span>Reset Password</span>
+                    )}
+                  </button>
+                </div>
+              </form>
+            )}
+          </motion.div>
+        </div>
+      )}
     </div>
   );
 }
