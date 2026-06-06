@@ -2,7 +2,8 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
   User, Mail, Bell, Key, CreditCard, Lock, Copy, 
-  Trash2, Plus, AlertTriangle, Check, Eye, EyeOff 
+  Trash2, Plus, AlertTriangle, Check, Eye, EyeOff,
+  Sliders, Palette, Sparkles, Shield, Mic2
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
@@ -15,9 +16,11 @@ export default function Settings() {
   // Navigation State
   const [activeTab, setActiveTab] = useState('profile');
 
-  // Profile Information State
+  // Profile Information & Avatar State
   const [name, setName] = useState(currentUser?.name || '');
   const [isUpdatingProfile, setIsUpdatingProfile] = useState(false);
+  const [avatarBg, setAvatarBg] = useState(() => localStorage.getItem('voiceflow_avatar_bg') || 'cosmic');
+  const [avatarIcon, setAvatarIcon] = useState(() => localStorage.getItem('voiceflow_avatar_icon') || 'initials');
 
   // Change Password State
   const [currentPassword, setCurrentPassword] = useState('');
@@ -25,6 +28,25 @@ export default function Settings() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [isUpdatingPassword, setIsUpdatingPassword] = useState(false);
   const [showPass, setShowPass] = useState({ current: false, new: false, confirm: false });
+
+  // Preferences & Accent Theme State
+  const [accentTheme, setAccentTheme] = useState(() => localStorage.getItem('voiceflow_accent_theme') || 'cosmic-purple');
+  const [prefLanguage, setPrefLanguage] = useState(() => {
+    const saved = JSON.parse(localStorage.getItem('voiceflow_tts_defaults') || '{}');
+    return saved.language || 'english';
+  });
+  const [prefVoice, setPrefVoice] = useState(() => {
+    const saved = JSON.parse(localStorage.getItem('voiceflow_tts_defaults') || '{}');
+    return saved.voice || 'natural';
+  });
+  const [prefSpeed, setPrefSpeed] = useState(() => {
+    const saved = JSON.parse(localStorage.getItem('voiceflow_tts_defaults') || '{}');
+    return saved.speed !== undefined ? saved.speed : 1.0;
+  });
+  const [prefPitch, setPrefPitch] = useState(() => {
+    const saved = JSON.parse(localStorage.getItem('voiceflow_tts_defaults') || '{}');
+    return saved.pitch !== undefined ? saved.pitch : 1.0;
+  });
 
   // Billing & Usage State
   const [stats, setStats] = useState({
@@ -98,13 +120,30 @@ export default function Settings() {
     setIsUpdatingProfile(true);
     try {
       const updatedUser = await userApi.updateProfile(name);
+      
+      // Update local storage for avatar selection
+      localStorage.setItem('voiceflow_avatar_bg', avatarBg);
+      localStorage.setItem('voiceflow_avatar_icon', avatarIcon);
+      
       setUser(updatedUser);
-      toast.success('Profile updated successfully!');
+      toast.success('Profile and avatar updated successfully!');
     } catch (err) {
       toast.error(err.message);
     } finally {
       setIsUpdatingProfile(false);
     }
+  };
+
+  const handleSavePreferences = (e) => {
+    e.preventDefault();
+    const defaults = {
+      language: prefLanguage,
+      voice: prefVoice,
+      speed: prefSpeed,
+      pitch: prefPitch
+    };
+    localStorage.setItem('voiceflow_tts_defaults', JSON.stringify(defaults));
+    toast.success('TTS default settings saved!');
   };
 
   const handleUpdatePassword = async (e) => {
@@ -181,6 +220,7 @@ export default function Settings() {
       await userApi.deleteAccount();
       localStorage.removeItem('voiceflow_token');
       localStorage.removeItem('voiceflow_user');
+      toast.removeItem('voiceflow_admin_session');
       toast.success('Your account has been deleted.');
       navigate('/');
     } catch (err) {
@@ -197,10 +237,66 @@ export default function Settings() {
     setCurrentPlan('Pro Plan');
   };
 
+  const handleSelectTheme = (theme) => {
+    localStorage.setItem('voiceflow_accent_theme', theme.id);
+    setAccentTheme(theme.id);
+    document.documentElement.style.setProperty('--color-primary-rgb', theme.primary);
+    document.documentElement.style.setProperty('--color-secondary-rgb', theme.secondary);
+    toast.success(`Theme updated to ${theme.label}!`);
+  };
+
   // ─── Rendering Helpers ──────────────────────────────────────────────────────
 
+  const avatarGradients = [
+    { id: 'cosmic', label: 'Cosmic Glow', classes: 'from-indigo-500 via-purple-500 to-pink-500' },
+    { id: 'sunset', label: 'Sunset Ember', classes: 'from-orange-500 via-red-500 to-rose-500' },
+    { id: 'forest', label: 'Neon Forest', classes: 'from-emerald-400 via-teal-500 to-cyan-600' },
+    { id: 'ocean', label: 'Ocean Breeze', classes: 'from-cyan-400 via-blue-500 to-indigo-600' },
+    { id: 'midnight', label: 'Midnight Slate', classes: 'from-gray-700 via-slate-800 to-zinc-900' },
+    { id: 'neon', label: 'Cyber Neon', classes: 'from-yellow-400 via-pink-500 to-purple-600' }
+  ];
+
+  const avatarSymbols = [
+    { id: 'initials', label: 'Initials (First Letter)' },
+    { id: 'user', label: 'User Outline' },
+    { id: 'sparkles', label: 'Sparkles Symbol' },
+    { id: 'mic', label: 'Microphone Symbol' },
+    { id: 'shield', label: 'Shield Symbol' }
+  ];
+
+  const themeOptions = [
+    { id: 'cosmic-purple', label: 'Cosmic Purple', primary: '99 102 241', secondary: '168 85 247', colors: 'from-[#6366f1] to-[#a855f7]' },
+    { id: 'cyberpunk-rose', label: 'Cyberpunk Rose', primary: '217 70 239', secondary: '236 72 153', colors: 'from-[#d946ef] to-[#ec4899]' },
+    { id: 'emerald-forest', label: 'Emerald Forest', primary: '16 185 129', secondary: '20 184 166', colors: 'from-[#10b981] to-[#14b8a6]' },
+    { id: 'oceanic-cyan', label: 'Oceanic Cyan', primary: '6 182 212', secondary: '59 130 246', colors: 'from-[#06b6d4] to-[#3b82f6]' },
+    { id: 'sunset-amber', label: 'Sunset Amber', primary: '245 158 11', secondary: '239 68 68', colors: 'from-[#f59e0b] to-[#ef4444]' }
+  ];
+
+  const renderSelectedAvatarPreview = () => {
+    const activeGrad = avatarGradients.find(g => g.id === avatarBg) || avatarGradients[0];
+    const size = 32;
+    return (
+      <div className={`w-20 h-20 rounded-2xl bg-gradient-to-tr ${activeGrad.classes} flex items-center justify-center text-white text-3xl font-extrabold shadow-lg shadow-primary/20 ring-2 ring-white/10 select-none transition-all duration-500`}>
+        {renderAvatarIconForPreview(size)}
+      </div>
+    );
+  };
+
+  const renderAvatarIconForPreview = (size) => {
+    switch (avatarIcon) {
+      case 'user': return <User size={size} />;
+      case 'sparkles': return <Sparkles size={size} />;
+      case 'mic': return <Mic2 size={size} />;
+      case 'shield': return <Shield size={size} />;
+      case 'initials':
+      default:
+        return <span>{name ? name[0].toUpperCase() : 'U'}</span>;
+    }
+  };
+
   const tabs = [
-    { id: 'profile', label: 'Profile', icon: User },
+    { id: 'profile', label: 'Profile & Avatar', icon: User },
+    { id: 'preferences', label: 'Preferences & Theme', icon: Sliders },
     { id: 'billing', label: 'Billing & Usage', icon: CreditCard },
     { id: 'notifications', label: 'Notifications', icon: Bell },
     { id: 'apikeys', label: 'API Keys', icon: Key },
@@ -210,7 +306,7 @@ export default function Settings() {
     <div className="space-y-6 max-w-5xl mx-auto pb-12">
       <div>
         <h1 className="text-3xl font-bold text-white mb-2">Settings</h1>
-        <p className="text-gray-400">Manage your profile details, subscriptions, notifications, and API credentials.</p>
+        <p className="text-gray-400">Manage your profile details, subscriptions, preferences, notifications, and API credentials.</p>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-8 items-start">
@@ -254,10 +350,8 @@ export default function Settings() {
                   <div className="glass-panel p-6 sm:p-8">
                     <h2 className="text-xl font-semibold text-white mb-6">Profile Information</h2>
                     
-                    <div className="flex flex-col sm:flex-row items-start sm:items-center space-y-4 sm:space-y-0 sm:space-x-6 mb-8">
-                      <div className="w-20 h-20 rounded-2xl bg-gradient-to-tr from-primary to-secondary flex items-center justify-center text-white text-3xl font-extrabold shadow-lg shadow-primary/20 ring-2 ring-white/10 select-none">
-                        {name ? name[0].toUpperCase() : 'U'}
-                      </div>
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center space-y-4 sm:space-y-0 sm:space-x-6 mb-8 bg-white/3 p-6 rounded-2xl border border-white/5">
+                      {renderSelectedAvatarPreview()}
                       <div>
                         <h3 className="text-white font-medium text-lg">{currentUser?.name}</h3>
                         <p className="text-sm text-gray-400">{currentUser?.email}</p>
@@ -265,37 +359,83 @@ export default function Settings() {
                       </div>
                     </div>
 
-                    <form onSubmit={handleUpdateProfile} className="space-y-5">
-                      <div className="space-y-1">
-                        <label className="text-sm font-medium text-gray-300 ml-1">Full Name</label>
-                        <div className="relative">
-                          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-500">
-                            <User size={18} />
+                    <form onSubmit={handleUpdateProfile} className="space-y-6">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div className="space-y-1">
+                          <label className="text-sm font-medium text-gray-300 ml-1">Full Name</label>
+                          <div className="relative">
+                            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-500">
+                              <User size={18} />
+                            </div>
+                            <input
+                              type="text"
+                              value={name}
+                              onChange={(e) => setName(e.target.value)}
+                              className="input-field pl-10"
+                              placeholder="John Doe"
+                            />
                           </div>
-                          <input
-                            type="text"
-                            value={name}
-                            onChange={(e) => setName(e.target.value)}
-                            className="input-field pl-10"
-                            placeholder="John Doe"
-                          />
+                        </div>
+
+                        <div className="space-y-1">
+                          <label className="text-sm font-medium text-gray-300 ml-1">Email Address</label>
+                          <div className="relative">
+                            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-500">
+                              <Mail size={18} />
+                            </div>
+                            <input
+                              type="email"
+                              className="input-field pl-10 text-gray-500 cursor-not-allowed opacity-75"
+                              value={currentUser?.email || ''}
+                              disabled
+                            />
+                          </div>
+                          <p className="text-2xs text-gray-500 ml-1">Email addresses cannot be changed for security.</p>
                         </div>
                       </div>
 
-                      <div className="space-y-1">
-                        <label className="text-sm font-medium text-gray-300 ml-1">Email Address</label>
-                        <div className="relative">
-                          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-500">
-                            <Mail size={18} />
+                      {/* Avatar custom choices */}
+                      <div className="space-y-4 pt-4 border-t border-white/5">
+                        <h3 className="text-sm font-semibold text-white">Customize Avatar Display</h3>
+                        
+                        <div className="space-y-3">
+                          <span className="text-xs font-medium text-gray-400">Background Gradient</span>
+                          <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
+                            {avatarGradients.map((g) => (
+                              <button
+                                key={g.id}
+                                type="button"
+                                onClick={() => setAvatarBg(g.id)}
+                                className={`h-10 rounded-xl bg-gradient-to-tr ${g.classes} relative border transition-all duration-300 flex items-center justify-center ${
+                                  avatarBg === g.id ? 'border-white scale-105 shadow-lg shadow-white/10 ring-2 ring-primary' : 'border-transparent opacity-70 hover:opacity-100'
+                                }`}
+                                title={g.label}
+                              >
+                                {avatarBg === g.id && <Check size={14} className="text-white drop-shadow-md" />}
+                              </button>
+                            ))}
                           </div>
-                          <input
-                            type="email"
-                            className="input-field pl-10 text-gray-500 cursor-not-allowed opacity-75"
-                            value={currentUser?.email || ''}
-                            disabled
-                          />
                         </div>
-                        <p className="text-xs text-gray-500 ml-1">Email addresses cannot be changed for security.</p>
+
+                        <div className="space-y-3 pt-2">
+                          <span className="text-xs font-medium text-gray-400">Avatar Center Symbol</span>
+                          <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+                            {avatarSymbols.map((s) => (
+                              <button
+                                key={s.id}
+                                type="button"
+                                onClick={() => setAvatarIcon(s.id)}
+                                className={`py-2 px-3 text-xs font-medium rounded-xl border transition-all duration-300 flex items-center justify-center space-x-2 ${
+                                  avatarIcon === s.id 
+                                    ? 'bg-primary/20 border-primary text-white shadow-lg shadow-primary/10' 
+                                    : 'bg-white/5 border-white/5 text-gray-400 hover:bg-white/10 hover:text-white'
+                                }`}
+                              >
+                                <span>{s.label.split(' ')[0]}</span>
+                              </button>
+                            ))}
+                          </div>
+                        </div>
                       </div>
 
                       <div className="pt-4 border-t border-white/5 flex justify-end">
@@ -306,7 +446,7 @@ export default function Settings() {
                         >
                           {isUpdatingProfile ? (
                             <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-                          ) : 'Save Changes'}
+                          ) : 'Save Profile Changes'}
                         </button>
                       </div>
                     </form>
@@ -420,6 +560,121 @@ export default function Settings() {
                 </div>
               )}
 
+              {/* PREFERENCES & THEME TAB */}
+              {activeTab === 'preferences' && (
+                <div className="space-y-6">
+                  {/* Theme Accent Panel */}
+                  <div className="glass-panel p-6 sm:p-8">
+                    <h2 className="text-xl font-semibold text-white mb-2">App Color Theme</h2>
+                    <p className="text-sm text-gray-400 mb-6">Select a dynamic gradient color accent for buttons, active tabs, and highlights across the entire dashboard.</p>
+                    
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+                      {themeOptions.map((theme) => {
+                        const isActive = accentTheme === theme.id;
+                        return (
+                          <button
+                            key={theme.id}
+                            type="button"
+                            onClick={() => handleSelectTheme(theme)}
+                            className={`p-4 rounded-2xl bg-white/5 border text-left transition-all duration-300 relative overflow-hidden group hover:scale-[1.02] ${
+                              isActive 
+                                ? 'border-primary shadow-lg shadow-primary/10 bg-primary/5' 
+                                : 'border-white/5 hover:border-white/20'
+                            }`}
+                          >
+                            <div className="flex items-center justify-between relative z-10">
+                              <span className="text-sm font-semibold text-white">{theme.label}</span>
+                              <div className={`w-8 h-8 rounded-lg bg-gradient-to-tr ${theme.colors} flex items-center justify-center shadow-md`}>
+                                {isActive && <Check size={14} className="text-white" />}
+                              </div>
+                            </div>
+                            <div className={`absolute -bottom-8 -right-8 w-20 h-20 bg-gradient-to-tr ${theme.colors} rounded-full blur-2xl opacity-10 group-hover:opacity-25 transition-opacity`} />
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Speech Generation Defaults Panel */}
+                  <div className="glass-panel p-6 sm:p-8">
+                    <div className="flex items-center space-x-3 mb-4">
+                      <Palette className="text-primary" size={22} />
+                      <h2 className="text-xl font-semibold text-white">Default TTS Settings</h2>
+                    </div>
+                    <p className="text-sm text-gray-400 mb-6">Configure the default options that load when you open the Voice Generator page.</p>
+                    
+                    <form onSubmit={handleSavePreferences} className="space-y-6">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium text-gray-300">Default Language</label>
+                          <select
+                            value={prefLanguage}
+                            onChange={(e) => setPrefLanguage(e.target.value)}
+                            className="input-field appearance-none bg-[#13131a]"
+                          >
+                            <option value="english">English (US)</option>
+                            <option value="sinhala">Sinhala</option>
+                            <option value="tamil">Tamil</option>
+                            <option value="hindi">Hindi</option>
+                          </select>
+                        </div>
+
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium text-gray-300">Default Voice Type</label>
+                          <select
+                            value={prefVoice}
+                            onChange={(e) => setPrefVoice(e.target.value)}
+                            className="input-field appearance-none bg-[#13131a]"
+                          >
+                            <option value="natural">Natural AI Voice (Recommended)</option>
+                            <option value="male">Standard Male</option>
+                            <option value="female">Standard Female</option>
+                            <option value="robotic">Robotic / Synthetic</option>
+                          </select>
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 pt-2">
+                        <div className="space-y-3">
+                          <div className="flex justify-between items-center">
+                            <label className="text-sm font-medium text-gray-300">Default Speed</label>
+                            <span className="text-xs text-primary font-mono">{prefSpeed.toFixed(1)}x</span>
+                          </div>
+                          <input
+                            type="range" min="0.5" max="2" step="0.1"
+                            value={prefSpeed}
+                            onChange={(e) => setPrefSpeed(parseFloat(e.target.value))}
+                            className="w-full accent-primary bg-white/10 h-2 rounded-lg appearance-none cursor-pointer"
+                          />
+                        </div>
+
+                        <div className="space-y-3">
+                          <div className="flex justify-between items-center">
+                            <label className="text-sm font-medium text-gray-300">Default Pitch</label>
+                            <span className="text-xs text-primary font-mono">{prefPitch.toFixed(1)}</span>
+                          </div>
+                          <input
+                            type="range" min="0.5" max="2" step="0.1"
+                            value={prefPitch}
+                            onChange={(e) => setPrefPitch(parseFloat(e.target.value))}
+                            className="w-full accent-primary bg-white/10 h-2 rounded-lg appearance-none cursor-pointer"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="pt-4 border-t border-white/5 flex justify-end">
+                        <button
+                          type="submit"
+                          className="btn-primary"
+                        >
+                          Save Preferences
+                        </button>
+                      </div>
+                    </form>
+                  </div>
+                </div>
+              )}
+
               {/* BILLING TAB */}
               {activeTab === 'billing' && (
                 <div className="space-y-6">
@@ -437,37 +692,80 @@ export default function Settings() {
                         <div className="w-8 h-8 border-4 border-primary/30 border-t-primary rounded-full animate-spin"></div>
                       </div>
                     ) : (
-                      <div className="space-y-6">
-                        <div>
-                          <div className="flex justify-between text-sm font-medium mb-2">
-                            <span className="text-gray-400">Characters Used</span>
-                            <span className="text-white">
-                              {stats.characters_used.toLocaleString()} / {stats.character_limit.toLocaleString()}
-                            </span>
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-center">
+                        {/* Circle Ring Progress */}
+                        <div className="col-span-1 flex flex-col items-center justify-center p-4 bg-white/3 border border-white/5 rounded-2xl">
+                          <span className="text-xs text-gray-400 mb-3 font-medium">Characters Remaining</span>
+                          <div className="relative flex items-center justify-center w-28 h-28">
+                            <svg className="w-28 h-28 transform -rotate-90">
+                              <circle
+                                className="text-white/5"
+                                strokeWidth="8"
+                                stroke="currentColor"
+                                fill="transparent"
+                                r="46"
+                                cx="56"
+                                cy="56"
+                              />
+                              <circle
+                                className="text-primary transition-all duration-1000 ease-out"
+                                strokeWidth="8"
+                                strokeDasharray={2 * Math.PI * 46} 
+                                strokeDashoffset={2 * Math.PI * 46 - (Math.min(100, (stats.characters_used / stats.character_limit) * 100) / 100) * 2 * Math.PI * 46}
+                                strokeLinecap="round"
+                                stroke="url(#billingProgressGradient)"
+                                fill="transparent"
+                                r="46"
+                                cx="56"
+                                cy="56"
+                              />
+                              <defs>
+                                <linearGradient id="billingProgressGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                                  <stop offset="0%" stopColor="var(--color-primary)" />
+                                  <stop offset="100%" stopColor="var(--color-secondary)" />
+                                </linearGradient>
+                              </defs>
+                            </svg>
+                            <div className="absolute flex flex-col items-center justify-center">
+                              <span className="text-lg font-bold text-white font-mono">
+                                {Math.max(0, stats.character_limit - stats.characters_used).toLocaleString()}
+                              </span>
+                              <span className="text-3xs text-gray-400 uppercase tracking-widest font-semibold mt-0.5">chars</span>
+                            </div>
                           </div>
-                          {/* Progress bar container */}
-                          <div className="w-full bg-white/5 border border-white/5 h-4 rounded-full overflow-hidden p-0.5">
-                            <div 
-                              className="bg-gradient-to-r from-primary to-secondary h-full rounded-full transition-all duration-1000 ease-out shadow-lg"
-                              style={{ width: `${Math.min(100, (stats.characters_used / stats.character_limit) * 100)}%` }}
-                            />
-                          </div>
-                          <div className="flex justify-between text-xs text-gray-500 mt-2">
-                            <span>
-                              {Math.min(100, Math.round((stats.characters_used / stats.character_limit) * 100))}% consumed
-                            </span>
-                            <span>Resets monthly</span>
+                          <div className="text-2xs text-gray-500 font-medium mt-3">
+                            {Math.round((stats.characters_used / stats.character_limit) * 100)}% consumed
                           </div>
                         </div>
 
-                        <div className="grid grid-cols-2 gap-4 pt-4 border-t border-white/5">
-                          <div className="bg-white/5 p-4 rounded-xl border border-white/5">
-                            <p className="text-xs text-gray-400">Voices Generated</p>
-                            <p className="text-2xl font-bold text-white mt-1">{stats.voices_generated}</p>
+                        {/* Usage Numbers and details */}
+                        <div className="md:col-span-2 space-y-4">
+                          <div>
+                            <div className="flex justify-between text-sm font-medium mb-2">
+                              <span className="text-gray-400">Total Characters Consumed</span>
+                              <span className="text-white font-mono font-bold">
+                                {stats.characters_used.toLocaleString()} / {stats.character_limit.toLocaleString()}
+                              </span>
+                            </div>
+                            {/* Segmented Cyberpunk Bar */}
+                            <div className="w-full bg-white/5 border border-white/5 h-4.5 rounded-full overflow-hidden p-0.5 flex">
+                              <div 
+                                className="bg-gradient-to-r from-primary to-secondary h-full rounded-full transition-all duration-1000 ease-out shadow-lg"
+                                style={{ width: `${Math.min(100, (stats.characters_used / stats.character_limit) * 100)}%` }}
+                              />
+                            </div>
+                            <p className="text-xs text-gray-500 mt-2 text-right">Stats resets monthly on your sign-up date</p>
                           </div>
-                          <div className="bg-white/5 p-4 rounded-xl border border-white/5">
-                            <p className="text-xs text-gray-400">Estimated Hours Saved</p>
-                            <p className="text-2xl font-bold text-white mt-1">{stats.hours_saved}h</p>
+
+                          <div className="grid grid-cols-2 gap-3">
+                            <div className="bg-white/5 p-3 rounded-xl border border-white/5">
+                              <p className="text-2xs text-gray-400 uppercase font-bold tracking-wider">Voices Generated</p>
+                              <p className="text-xl font-bold text-white mt-1">{stats.voices_generated}</p>
+                            </div>
+                            <div className="bg-white/5 p-3 rounded-xl border border-white/5">
+                              <p className="text-2xs text-gray-400 uppercase font-bold tracking-wider">Estimated Hours Saved</p>
+                              <p className="text-xl font-bold text-white mt-1">{stats.hours_saved}h</p>
+                            </div>
                           </div>
                         </div>
                       </div>
@@ -476,7 +774,7 @@ export default function Settings() {
 
                   {/* Plan Cards */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="glass-panel p-6 border-white/5 relative flex flex-col justify-between">
+                    <div className="glow-card p-6 border border-white/5 relative flex flex-col justify-between">
                       <div>
                         <h3 className="text-lg font-bold text-white mb-1">Free Tier</h3>
                         <p className="text-xs text-gray-400 mb-4">Standard features for hobbyists</p>
@@ -495,7 +793,7 @@ export default function Settings() {
                       </button>
                     </div>
 
-                    <div className="glass-panel p-6 border-secondary/30 relative flex flex-col justify-between overflow-hidden">
+                    <div className="glow-card p-6 border border-secondary/30 relative flex flex-col justify-between overflow-hidden">
                       <div className="absolute top-0 right-0 bg-gradient-to-l from-secondary to-primary text-white text-2xs font-extrabold px-3 py-1 rounded-bl-xl uppercase tracking-wider">
                         Popular
                       </div>
@@ -512,7 +810,7 @@ export default function Settings() {
                       </div>
                       <button 
                         onClick={handleUpgradePlan}
-                        className="btn-primary w-full"
+                        className="btn-primary w-full shadow-lg shadow-primary/25"
                       >
                         {currentPlan === 'Pro Plan' ? 'Current Plan (Manage)' : 'Upgrade to Pro'}
                       </button>
@@ -527,8 +825,8 @@ export default function Settings() {
                   <h2 className="text-xl font-semibold text-white mb-6">Notification Preferences</h2>
                   <p className="text-sm text-gray-400 mb-6">Configure how and when you want to receive emails and system alerts.</p>
                   
-                  <div className="space-y-6">
-                    <div className="flex items-start justify-between p-4 rounded-xl bg-white/5 border border-white/5">
+                  <div className="space-y-4">
+                    <div className="flex items-start justify-between p-4 rounded-2xl bg-white/3 border border-white/5 hover:border-white/10 transition-colors">
                       <div className="space-y-1 pr-4">
                         <label className="text-white font-medium text-sm">Audio Generation Alert</label>
                         <p className="text-xs text-gray-400">Receive an email completion alert when a large Text-to-Speech generation is completed.</p>
@@ -545,7 +843,7 @@ export default function Settings() {
                       </button>
                     </div>
 
-                    <div className="flex items-start justify-between p-4 rounded-xl bg-white/5 border border-white/5">
+                    <div className="flex items-start justify-between p-4 rounded-2xl bg-white/3 border border-white/5 hover:border-white/10 transition-colors">
                       <div className="space-y-1 pr-4">
                         <label className="text-white font-medium text-sm">Weekly Usage Reports</label>
                         <p className="text-xs text-gray-400">Receive weekly summaries regarding character consumption, hours saved, and audio statistics.</p>
@@ -562,7 +860,7 @@ export default function Settings() {
                       </button>
                     </div>
 
-                    <div className="flex items-start justify-between p-4 rounded-xl bg-white/5 border border-white/5">
+                    <div className="flex items-start justify-between p-4 rounded-2xl bg-white/3 border border-white/5 hover:border-white/10 transition-colors">
                       <div className="space-y-1 pr-4">
                         <label className="text-white font-medium text-sm">Security & Logins</label>
                         <p className="text-xs text-gray-400">Receive security alerts on logins from unrecognized devices or IP addresses.</p>
@@ -579,7 +877,7 @@ export default function Settings() {
                       </button>
                     </div>
 
-                    <div className="flex items-start justify-between p-4 rounded-xl bg-white/5 border border-white/5">
+                    <div className="flex items-start justify-between p-4 rounded-2xl bg-white/3 border border-white/5 hover:border-white/10 transition-colors">
                       <div className="space-y-1 pr-4">
                         <label className="text-white font-medium text-sm">Product Updates & Features</label>
                         <p className="text-xs text-gray-400">Receive newsletter and email notifications regarding new voice models and product offerings.</p>
@@ -639,7 +937,7 @@ export default function Settings() {
                         {apiKeys.map((key) => (
                           <div 
                             key={key.id}
-                            className="p-4 rounded-xl bg-white/5 border border-white/5 flex flex-col sm:flex-row sm:items-center justify-between gap-4"
+                            className="p-4 rounded-2xl bg-white/3 border border-white/5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:border-white/10 transition-colors"
                           >
                             <div className="space-y-1">
                               <h4 className="text-white font-medium text-sm">{key.name}</h4>

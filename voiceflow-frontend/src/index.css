@@ -2,6 +2,11 @@
 @tailwind components;
 @tailwind utilities;
 
+:root {
+  --color-primary-rgb: 99 102 241;
+  --color-secondary-rgb: 168 85 247;
+}
+
 @layer base {
   body {
     @apply bg-background text-white antialiased;

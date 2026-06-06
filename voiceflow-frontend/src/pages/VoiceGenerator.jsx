@@ -4,11 +4,12 @@ import toast from 'react-hot-toast';
 import { ttsApi, BASE_URL } from '../api';
 
 export default function VoiceGenerator() {
+  const savedDefaults = JSON.parse(localStorage.getItem('voiceflow_tts_defaults') || '{}');
   const [text, setText] = useState('');
-  const [language, setLanguage] = useState('english');
-  const [voice, setVoice] = useState('natural');
-  const [speed, setSpeed] = useState(1);
-  const [pitch, setPitch] = useState(1);
+  const [language, setLanguage] = useState(savedDefaults.language || 'english');
+  const [voice, setVoice] = useState(savedDefaults.voice || 'natural');
+  const [speed, setSpeed] = useState(savedDefaults.speed !== undefined ? savedDefaults.speed : 1);
+  const [pitch, setPitch] = useState(savedDefaults.pitch !== undefined ? savedDefaults.pitch : 1);
   const [isGenerating, setIsGenerating] = useState(false);
   const [audioUrl, setAudioUrl] = useState(null);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -63,6 +64,7 @@ export default function VoiceGenerator() {
       const fullUrl = `${BASE_URL}${data.audio_url}`;
       setAudioUrl(fullUrl);
       toast.success('Voice generated successfully!');
+      window.dispatchEvent(new Event('tts_generated'));
     } catch (err) {
       toast.error(err.message || 'Failed to generate voice. Is the backend running?');
     } finally {

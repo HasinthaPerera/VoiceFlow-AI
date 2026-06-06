@@ -9,8 +9,8 @@ export default {
       colors: {
         background: '#0a0a0f',
         surface: '#13131a',
-        primary: '#6366f1',
-        secondary: '#a855f7',
+        primary: 'rgb(var(--color-primary-rgb) / <alpha-value>)',
+        secondary: 'rgb(var(--color-secondary-rgb) / <alpha-value>)',
       },
       fontFamily: {
         sans: ['Inter', 'sans-serif'],

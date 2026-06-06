@@ -1,22 +1,68 @@
 import { Outlet, NavLink, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, Mic2, History, Settings, LogOut, Menu, X, User, Shield } from 'lucide-react';
+import { LayoutDashboard, Mic2, History, Settings, LogOut, Menu, X, User, Shield, Sparkles } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
-import { getUser } from '../api';
+import { getUser, userApi } from '../api';
 
 export default function DashboardLayout() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [user, setUser] = useState(getUser());
   const navigate = useNavigate();
 
+  const [stats, setStats] = useState(null);
+  const [avatarBg, setAvatarBg] = useState(localStorage.getItem('voiceflow_avatar_bg') || 'cosmic');
+  const [avatarIcon, setAvatarIcon] = useState(localStorage.getItem('voiceflow_avatar_icon') || 'initials');
+
+  const fetchStats = async () => {
+    try {
+      const data = await userApi.getStats();
+      setStats(data);
+    } catch (err) {
+      console.error("Failed to load header stats", err);
+    }
+  };
+
   useEffect(() => {
+    fetchStats();
+
     const handleUserUpdate = () => {
       setUser(getUser());
+      setAvatarBg(localStorage.getItem('voiceflow_avatar_bg') || 'cosmic');
+      setAvatarIcon(localStorage.getItem('voiceflow_avatar_icon') || 'initials');
+      fetchStats();
     };
+
     window.addEventListener('user_updated', handleUserUpdate);
-    return () => window.removeEventListener('user_updated', handleUserUpdate);
+    window.addEventListener('tts_generated', handleUserUpdate);
+
+    return () => {
+      window.removeEventListener('user_updated', handleUserUpdate);
+      window.removeEventListener('tts_generated', handleUserUpdate);
+    };
   }, []);
+
+  const avatarGradients = {
+    cosmic: 'from-indigo-500 via-purple-500 to-pink-500',
+    sunset: 'from-orange-500 via-red-500 to-rose-500',
+    forest: 'from-emerald-400 via-teal-500 to-cyan-600',
+    ocean: 'from-cyan-400 via-blue-500 to-indigo-600',
+    midnight: 'from-gray-700 via-slate-800 to-zinc-900',
+    neon: 'from-yellow-400 via-pink-500 to-purple-600'
+  };
+
+  const renderAvatarSymbol = () => {
+    const size = 16;
+    switch (avatarIcon) {
+      case 'user': return <User size={size} />;
+      case 'sparkles': return <Sparkles size={size} />;
+      case 'mic': return <Mic2 size={size} />;
+      case 'shield': return <Shield size={size} />;
+      case 'initials':
+      default:
+        return <span>{user?.name ? user.name[0].toUpperCase() : 'U'}</span>;
+    }
+  };
 
   const handleLogout = () => {
     localStorage.removeItem('voiceflow_token');
@@ -132,12 +178,14 @@ export default function DashboardLayout() {
           </div>
           
           <div className="flex items-center space-x-4">
-            <div className="hidden sm:flex items-center text-sm px-3 py-1 bg-white/5 border border-white/10 rounded-full">
-              <span className="text-gray-400">Available chars: </span>
-              <span className="text-primary font-bold ml-1">100,000</span>
+            <div className="hidden sm:flex items-center text-sm px-3.5 py-1.5 bg-white/5 border border-white/5 rounded-full backdrop-blur-md">
+              <span className="text-gray-400 text-xs font-medium">Available chars:</span>
+              <span className="text-primary font-extrabold ml-1.5 font-mono text-sm animate-pulse-slow">
+                {stats ? (stats.character_limit - stats.characters_used).toLocaleString() : '...'}
+              </span>
             </div>
-            <div className="w-9 h-9 rounded-full bg-gradient-to-r from-purple-500 to-indigo-500 flex items-center justify-center text-white font-bold shadow-lg ring-2 ring-background">
-              {user?.name ? user.name[0].toUpperCase() : 'U'}
+            <div className={`w-9 h-9 rounded-full bg-gradient-to-r ${avatarGradients[avatarBg] || avatarGradients.cosmic} flex items-center justify-center text-white font-extrabold shadow-lg ring-2 ring-background select-none`}>
+              {renderAvatarSymbol()}
             </div>
           </div>
         </header>
