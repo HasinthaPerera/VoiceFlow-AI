@@ -1,15 +1,27 @@
 import { useState, useRef, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import { Play, Square, Download, Settings2, Loader2, Copy, Check } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { ttsApi, BASE_URL } from '../api';
 
 export default function VoiceGenerator() {
+  const location = useLocation();
+  const stateDefaults = location.state || {};
   const savedDefaults = JSON.parse(localStorage.getItem('voiceflow_tts_defaults') || '{}');
-  const [text, setText] = useState('');
-  const [language, setLanguage] = useState(savedDefaults.language || 'english');
-  const [voice, setVoice] = useState(savedDefaults.voice || 'natural');
-  const [speed, setSpeed] = useState(savedDefaults.speed !== undefined ? savedDefaults.speed : 1);
-  const [pitch, setPitch] = useState(savedDefaults.pitch !== undefined ? savedDefaults.pitch : 1);
+  
+  const [text, setText] = useState(stateDefaults.text || '');
+  const [language, setLanguage] = useState(stateDefaults.language || savedDefaults.language || 'english');
+  const [voice, setVoice] = useState(stateDefaults.voice || savedDefaults.voice || 'natural');
+  const [speed, setSpeed] = useState(
+    stateDefaults.speed !== undefined 
+      ? stateDefaults.speed 
+      : (savedDefaults.speed !== undefined ? savedDefaults.speed : 1)
+  );
+  const [pitch, setPitch] = useState(
+    stateDefaults.pitch !== undefined 
+      ? stateDefaults.pitch 
+      : (savedDefaults.pitch !== undefined ? savedDefaults.pitch : 1)
+  );
   const [isGenerating, setIsGenerating] = useState(false);
   const [audioUrl, setAudioUrl] = useState(null);
   const [isPlaying, setIsPlaying] = useState(false);
