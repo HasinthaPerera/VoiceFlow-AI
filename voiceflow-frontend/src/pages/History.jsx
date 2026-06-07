@@ -189,6 +189,7 @@ export default function History() {
     navigate('/dashboard/generate', {
       state: {
         text: item.text,
+        title: item.title,
         language: item.language,
         voice: item.voice,
         speed: item.speed,
