@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
-import { Mic2, History, TrendingUp, Clock, Loader2, Play, Square, Sparkles, Lightbulb, ChevronRight } from 'lucide-react';
+import { Mic2, History, TrendingUp, Clock, Loader2, Play, Square, Sparkles, Lightbulb, ChevronRight, ChevronLeft, Cpu, Shield, Activity, Copy } from 'lucide-react';
+import toast from 'react-hot-toast';
 import { userApi, historyApi, getUser, BASE_URL } from '../api';
 
 function AnimatedNumber({ value, isFloat = false }) {
@@ -48,6 +49,20 @@ export default function Dashboard() {
   const [playingId, setPlayingId] = useState(null);
   const user = getUser();
   const audioRef = useRef(null);
+  const [activeMetric, setActiveMetric] = useState('characters');
+  const [hoveredPoint, setHoveredPoint] = useState(null);
+  const [gpuLoad, setGpuLoad] = useState(34);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setGpuLoad((prev) => {
+        const delta = Math.random() > 0.5 ? 1 : -1;
+        const next = prev + delta;
+        return next > 45 ? 45 : next < 25 ? 25 : next;
+      });
+    }, 3000);
+    return () => clearInterval(interval);
+  }, []);
 
   const insights = [
     "Tip: Adjust speed to 1.1x for a more natural, fast-paced educational narration.",
@@ -118,14 +133,24 @@ export default function Dashboard() {
   const pct = stats ? Math.min((stats.characters_used / stats.character_limit) * 100, 100) : 0;
   
   // Chart calculation
-  const usageData = [2100, 4300, 1200, 8900, 5400, 7800, stats?.characters_used ? (stats.characters_used % 12000) + 1000 : 3500];
+  const getUsageData = () => {
+    if (activeMetric === 'voices') {
+      return [2, 5, 1, 9, 6, 8, stats?.voices_generated ? stats.voices_generated : 4];
+    }
+    if (activeMetric === 'hours') {
+      return [0.1, 0.4, 0.1, 0.8, 0.5, 0.7, stats?.hours_saved ? stats.hours_saved : 0.3];
+    }
+    return [2100, 4300, 1200, 8900, 5400, 7800, stats?.characters_used ? (stats.characters_used % 12000) + 1000 : 3500];
+  };
+
+  const usageData = getUsageData();
   const chartHeight = 85; 
   const chartWidth = 500;
-  const maxUsage = Math.max(...usageData, 1000);
+  const maxUsage = Math.max(...usageData, activeMetric === 'hours' ? 1.0 : 1000);
   const points = usageData.map((val, idx) => {
     const x = (idx / (usageData.length - 1)) * chartWidth;
     const y = chartHeight - (val / maxUsage) * (chartHeight - 20) - 10;
-    return { x, y };
+    return { x, y, val };
   });
   
   const pathD = points.reduce((acc, p, idx) => {
@@ -248,13 +273,34 @@ export default function Dashboard() {
       {/* SVG Sparkline Usage Chart */}
       {!loading && (
         <div className="glass-panel p-6 hover:border-white/10 transition-colors duration-300">
-          <div className="flex justify-between items-center mb-6">
+          <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4 mb-6">
             <div>
               <h2 className="text-lg font-semibold text-white">Usage Analytics</h2>
-              <p className="text-sm text-gray-400 mt-0.5">Daily character generation trend (last 7 days)</p>
+              <p className="text-sm text-gray-400 mt-0.5">Daily synthesis metrics trend (last 7 days)</p>
             </div>
-            <div className="text-xs bg-white/5 border border-white/10 px-3 py-1.5 rounded-full text-gray-400 font-mono">
-              Active Engine: Cloud Neural
+            
+            {/* Metric Switcher tabs */}
+            <div className="flex bg-white/5 border border-white/10 p-1 rounded-xl">
+              {[
+                { id: 'characters', label: 'Chars' },
+                { id: 'voices', label: 'Voices' },
+                { id: 'hours', label: 'Hours' }
+              ].map((m) => (
+                <button
+                  key={m.id}
+                  onClick={() => {
+                    setActiveMetric(m.id);
+                    setHoveredPoint(null);
+                  }}
+                  className={`text-xs px-3 py-1.5 rounded-lg transition-all font-semibold ${
+                    activeMetric === m.id
+                      ? 'bg-primary text-white shadow shadow-primary/10'
+                      : 'text-gray-400 hover:text-white'
+                  }`}
+                >
+                  {m.label}
+                </button>
+              ))}
             </div>
           </div>
           
@@ -277,7 +323,7 @@ export default function Dashboard() {
                 <path
                   d={fillD}
                   fill="url(#chartGradient)"
-                  className="transition-all duration-1000 ease-out"
+                  className="transition-all duration-300"
                 />
                 
                 {/* Line Path */}
@@ -288,32 +334,60 @@ export default function Dashboard() {
                   strokeWidth="2.5"
                   strokeLinecap="round"
                   strokeLinejoin="round"
-                  className="transition-all duration-1000 ease-out"
+                  className="transition-all duration-300"
                 />
                 
                 {/* Data points */}
                 {points.map((p, i) => (
-                  <g key={i} className="group cursor-pointer">
+                  <g key={i} className="cursor-pointer">
                     <circle
                       cx={p.x}
                       cy={p.y}
-                      r="4"
-                      fill="#6366f1"
+                      r={hoveredPoint?.idx === i ? "6" : "4"}
+                      fill={hoveredPoint?.idx === i ? "#a855f7" : "#6366f1"}
                       stroke="#fff"
                       strokeWidth="1.5"
-                      className="hover:r-5 transition-all duration-200"
+                      onMouseEnter={() => setHoveredPoint({ idx: i, x: p.x, y: p.y, val: p.val })}
+                      onMouseLeave={() => setHoveredPoint(null)}
+                      className="transition-all duration-200"
                     />
                   </g>
                 ))}
               </svg>
             </div>
+
+            {/* Hover Tooltip display */}
+            {hoveredPoint && (
+              <div 
+                className="absolute bg-surface/90 border border-white/10 backdrop-blur-xl px-3 py-1.5 rounded-lg text-xs font-mono shadow-2xl pointer-events-none -translate-x-1/2 -translate-y-[110%] z-20 transition-all duration-150"
+                style={{
+                  left: `${(hoveredPoint.x / 500) * 100}%`,
+                  top: `${(hoveredPoint.y / 100) * 100}%`,
+                }}
+              >
+                <div className="text-[10px] text-gray-500 font-semibold uppercase">{days[hoveredPoint.idx]}</div>
+                <div className="text-white font-bold whitespace-nowrap mt-0.5">
+                  {activeMetric === 'hours' 
+                    ? `${hoveredPoint.val.toFixed(1)} hrs saved` 
+                    : activeMetric === 'voices'
+                      ? `${hoveredPoint.val} voices`
+                      : `${hoveredPoint.val.toLocaleString()} chars`
+                  }
+                </div>
+              </div>
+            )}
             
             {/* Axis labels */}
             <div className="flex justify-between text-xs text-gray-500 font-medium font-mono px-1">
               {days.map((day, i) => (
                 <div key={i} className="text-center w-12">
                   <div>{day}</div>
-                  <div className="text-[10px] text-gray-600 mt-0.5">{usageData[i].toLocaleString()}</div>
+                  <div className="text-[10px] text-gray-600 mt-0.5">
+                    {activeMetric === 'hours'
+                      ? `${usageData[i].toFixed(1)}h`
+                      : usageData[i].toLocaleString()
+                    }
+                  </div>
                 </div>
               ))}
             </div>
@@ -361,18 +435,99 @@ export default function Dashboard() {
             </div>
           </div>
 
+          {/* Server & Synthesis Diagnostics */}
+          <div className="glass-panel p-6 border border-white/5 relative overflow-hidden group">
+            <div className="absolute top-0 right-0 w-24 h-24 bg-green-500/5 rounded-full blur-2xl"></div>
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-lg font-semibold text-white flex items-center gap-2">
+                <Cpu size={18} className="text-primary animate-pulse" />
+                <span>GPU Cluster Diagnostics</span>
+              </h2>
+              <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-green-500/10 border border-green-500/20 text-[10px] text-green-400 font-mono font-bold tracking-wider uppercase">
+                <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-ping"></span>
+                ONLINE
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="bg-black/25 p-3 rounded-xl border border-white/5 space-y-1">
+                <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider block">GPU Cluster Load</span>
+                <div className="flex items-baseline gap-1.5">
+                  <span className="text-xl font-bold text-white font-mono">{gpuLoad}%</span>
+                  <span className="text-[9px] text-gray-400">Peak Cap</span>
+                </div>
+                <div className="h-1 bg-white/5 rounded-full overflow-hidden">
+                  <div className="h-full bg-gradient-to-r from-primary to-secondary transition-all duration-500" style={{ width: `${gpuLoad}%` }}></div>
+                </div>
+              </div>
+
+              <div className="bg-black/25 p-3 rounded-xl border border-white/5 space-y-1">
+                <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider block">Synthesis Latency</span>
+                <div className="flex items-baseline gap-1.5">
+                  <span className="text-xl font-bold text-white font-mono">124ms</span>
+                  <span className="text-[9px] text-green-400 font-medium">SLA Good</span>
+                </div>
+                <div className="h-1 bg-white/5 rounded-full overflow-hidden">
+                  <div className="h-full bg-green-500" style={{ width: `30%` }}></div>
+                </div>
+              </div>
+
+              <div className="bg-black/25 p-3 rounded-xl border border-white/5 space-y-1">
+                <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider block">GPU Memory allocation</span>
+                <div className="flex items-baseline gap-1.5">
+                  <span className="text-xl font-bold text-white font-mono">6.4 GB</span>
+                  <span className="text-[9px] text-gray-400">of 16GB</span>
+                </div>
+                <div className="h-1 bg-white/5 rounded-full overflow-hidden">
+                  <div className="h-full bg-blue-500" style={{ width: `40%` }}></div>
+                </div>
+              </div>
+
+              <div className="bg-black/25 p-3 rounded-xl border border-white/5 space-y-1">
+                <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider block">Network Ping</span>
+                <div className="flex items-baseline gap-1.5">
+                  <span className="text-xl font-bold text-white font-mono">24ms</span>
+                  <span className="text-[9px] text-green-400 font-medium">Excellent</span>
+                </div>
+                <div className="h-1 bg-white/5 rounded-full overflow-hidden">
+                  <div className="h-full bg-green-500" style={{ width: `15%` }}></div>
+                </div>
+              </div>
+            </div>
+          </div>
+
           {/* rotating tips/insights */}
           <div className="glass-panel p-5 bg-gradient-to-r from-surface/50 to-primary/5 border border-white/5 relative overflow-hidden">
             <div className="absolute top-0 right-0 w-24 h-24 bg-primary/5 rounded-full blur-2xl"></div>
-            <div className="flex items-start space-x-3">
-              <div className="p-2 bg-primary/10 rounded-lg text-primary mt-0.5">
-                <Lightbulb size={18} />
+            <div className="flex items-start justify-between gap-4">
+              <div className="flex items-start space-x-3 min-w-0 flex-1">
+                <div className="p-2 bg-primary/10 rounded-lg text-primary mt-0.5 shrink-0">
+                  <Lightbulb size={18} />
+                </div>
+                <div className="space-y-1 min-w-0 flex-1">
+                  <span className="text-xs font-semibold text-primary uppercase tracking-wider block">Dashboard Insights</span>
+                  <p className="text-gray-300 text-sm leading-relaxed transition-all duration-500 min-h-[40px]">
+                    {insights[insightIndex]}
+                  </p>
+                </div>
               </div>
-              <div className="space-y-1">
-                <span className="text-xs font-semibold text-primary uppercase tracking-wider">Dashboard Insights</span>
-                <p className="text-gray-300 text-sm leading-relaxed transition-all duration-500 min-h-[40px]">
-                  {insights[insightIndex]}
-                </p>
+              
+              {/* Interactive tip controls */}
+              <div className="flex items-center gap-1 shrink-0 self-center">
+                <button 
+                  onClick={() => setInsightIndex((prev) => (prev - 1 + insights.length) % insights.length)}
+                  className="w-7 h-7 rounded-lg bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white flex items-center justify-center transition-colors"
+                  title="Previous Tip"
+                >
+                  <ChevronLeft size={14} />
+                </button>
+                <button 
+                  onClick={() => setInsightIndex((prev) => (prev + 1) % insights.length)}
+                  className="w-7 h-7 rounded-lg bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white flex items-center justify-center transition-colors"
+                  title="Next Tip"
+                >
+                  <ChevronRight size={14} />
+                </button>
               </div>
             </div>
           </div>
@@ -392,12 +547,12 @@ export default function Dashboard() {
             ) : (
               recentActivity.map((item) => (
                 <div key={item.id} className="flex items-center justify-between p-3 rounded-xl bg-white/5 border border-white/5 hover:border-white/10 transition-colors">
-                  <div className="flex items-center space-x-3 min-w-0">
+                  <div className="flex items-center space-x-3 min-w-0 flex-1">
                     <button
                       onClick={() => handlePlayActivity(item)}
                       className={`w-10 h-10 rounded-full flex flex-shrink-0 items-center justify-center transition-all duration-300 ${
                         playingId === item.id 
-                          ? 'bg-red-500/20 text-red-500 border border-red-500/30'
+                          ? 'bg-red-500/20 text-red-500 border border-red-500/30 animate-pulse'
                           : 'bg-primary/10 text-primary border border-primary/20 hover:bg-primary hover:text-white'
                       }`}
                       title={playingId === item.id ? 'Pause' : 'Play Preview'}
@@ -408,14 +563,46 @@ export default function Dashboard() {
                         <Play size={14} fill="currentColor" className="ml-0.5" />
                       )}
                     </button>
-                    <div className="min-w-0">
-                      <h4 className="text-white font-medium text-sm truncate">{item.title}</h4>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2">
+                        <h4 className="text-white font-medium text-sm truncate">{item.title}</h4>
+                        
+                        {/* Audio playing wave animation */}
+                        {playingId === item.id && (
+                          <div className="flex items-end gap-[1.5px] h-3 shrink-0">
+                            {[1, 2, 3, 4].map((bar) => (
+                              <div
+                                key={bar}
+                                className="w-[2px] bg-primary rounded-full animate-wave-bar"
+                                style={{
+                                  height: '100%',
+                                  animationDelay: `${bar * 0.15}s`,
+                                  animationDuration: '0.85s'
+                                }}
+                              ></div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
                       <p className="text-gray-500 text-xs capitalize truncate">{item.voice} • {item.language}</p>
                     </div>
                   </div>
-                  <span className="text-gray-500 text-xs flex-shrink-0 font-medium ml-2">
-                    {new Date(item.created_at).toLocaleDateString()}
-                  </span>
+                  
+                  <div className="flex items-center gap-3 ml-2">
+                    <span className="text-gray-500 text-xs font-medium hidden sm:inline">
+                      {new Date(item.created_at).toLocaleDateString()}
+                    </span>
+                    <button 
+                      onClick={() => {
+                        navigator.clipboard.writeText(item.text || "");
+                        toast.success("Speech script copied!");
+                      }}
+                      className="w-8 h-8 rounded-lg bg-white/5 border border-white/10 hover:bg-white/10 text-gray-400 hover:text-white flex items-center justify-center transition-all shrink-0"
+                      title="Copy script text"
+                    >
+                      <Copy size={13} />
+                    </button>
+                  </div>
                 </div>
               ))
             )}
