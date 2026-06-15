@@ -157,4 +157,59 @@
   animation: pulse-slow 8s ease-in-out infinite;
 }
 
+/* Flow line animation for Pipeline */
+@keyframes pipeline-flow {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+.animate-pipeline-flow {
+  background: linear-gradient(90deg, #6366f1, #a855f7, #ec4899, #6366f1);
+  background-size: 300% 300%;
+  animation: pipeline-flow 3s ease infinite;
+}
+
+/* Flat wave animation for Standard TTS preview */
+@keyframes flat-wave {
+  0%, 100% { transform: scaleY(0.2); }
+  50% { transform: scaleY(0.25); }
+}
+
+.animate-flat-wave {
+  animation: flat-wave 1s ease-in-out infinite;
+  transform-origin: bottom;
+}
+
+/* Dynamic glowing text */
+@keyframes text-glow {
+  0%, 100% { text-shadow: 0 0 8px rgba(168, 85, 247, 0.2); }
+  50% { text-shadow: 0 0 20px rgba(168, 85, 247, 0.5), 0 0 8px rgba(99, 102, 241, 0.3); }
+}
+
+.text-glow-active {
+  animation: text-glow 4s ease-in-out infinite;
+}
+
+/* Shimmer overlay effect */
+@keyframes shimmer {
+  100% { transform: translateX(100%); }
+}
+
+.shimmer-effect::after {
+  content: '';
+  position: absolute;
+  top: 0; right: 0; bottom: 0; left: 0;
+  transform: translateX(-100%);
+  background-image: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0) 0%,
+    rgba(255, 255, 255, 0.05) 20%,
+    rgba(255, 255, 255, 0.1) 60%,
+    rgba(255, 255, 255, 0) 100%
+  );
+  animation: shimmer 2.5s infinite;
+}
+
+
 

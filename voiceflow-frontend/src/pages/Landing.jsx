@@ -74,6 +74,15 @@ export default function Landing() {
 
   // --- Hero Interactive Mockup State ---
   const [isHeroPlaying, setIsHeroPlaying] = useState(false);
+  const [heroText, setHeroText] = useState("Welcome to VoiceFlow AI. Experience the future of neural speech synthesis.");
+  const [heroSpeed, setHeroSpeed] = useState(1.0);
+  const [heroPitch, setHeroPitch] = useState(1.0);
+  const [heroStatus, setHeroStatus] = useState('idle'); // 'idle' | 'normalizing' | 'synthesizing' | 'playing'
+  const [heroPreset, setHeroPreset] = useState('welcome');
+
+  // --- Voice Comparison State ---
+  const [playingCompare, setPlayingCompare] = useState('none'); // 'none' | 'standard' | 'neural'
+  const [activeStage, setActiveStage] = useState(0);
 
   // --- Web Speech Synth voices caching ---
   useEffect(() => {
@@ -353,24 +362,68 @@ export default function Landing() {
   };
 
   const handlePlayHeroMockup = () => {
-    if (isHeroPlaying) {
+    if (isHeroPlaying || heroStatus !== 'idle') {
       window.speechSynthesis.cancel();
       setIsHeroPlaying(false);
+      setHeroStatus('idle');
       return;
     }
-    setIsHeroPlaying(true);
-    speakText(
-      "Voice synthesis translates raw text characters into mathematical wave frequencies, resulting in highly articulation-rich and smooth speech.",
-      "english",
-      1.0,
-      1.2,
-      () => {},
-      () => setIsHeroPlaying(false)
-    );
+
+    setHeroStatus('normalizing');
+    setTimeout(() => {
+      setHeroStatus('synthesizing');
+      setTimeout(() => {
+        setHeroStatus('playing');
+        setIsHeroPlaying(true);
+        speakText(
+          heroText,
+          "english",
+          heroSpeed,
+          heroPitch,
+          () => {},
+          () => {
+            setIsHeroPlaying(false);
+            setHeroStatus('idle');
+          }
+        );
+      }, 700);
+    }, 600);
+  };
+
+  const handlePlayComparison = (type) => {
+    if (playingCompare === type) {
+      window.speechSynthesis.cancel();
+      setPlayingCompare('none');
+      return;
+    }
+
+    window.speechSynthesis.cancel();
+    setPlayingCompare(type);
+
+    if (type === 'standard') {
+      speakText(
+        "Warning. Standard synthesis active. Pacing vectors are linear. Pitch is flat and robotic.",
+        "english",
+        1.15,
+        1.75,
+        () => {},
+        () => setPlayingCompare('none')
+      );
+    } else {
+      speakText(
+        "Hi! This is Emma, powered by VoiceFlow's next-gen neural engine. Notice how the pacing naturally slows down for emphasis, and the tone carries warm, human-like expression.",
+        "english",
+        0.95,
+        1.0,
+        () => {},
+        () => setPlayingCompare('none')
+      );
+    }
   };
 
   // --- Pricing State ---
   const [billingPeriod, setBillingPeriod] = useState('monthly');
+  const [priceSliderVal, setPriceSliderVal] = useState(2); // default to 250k chars (Pro)
 
   // --- FAQ State & Search ---
   const [expandedFaq, setExpandedFaq] = useState(null);
@@ -484,68 +537,159 @@ export default function Landing() {
         {/* Hero Interactive UI Card Mockup */}
         <div className="lg:col-span-5 z-10 relative">
           <motion.div
-            initial={{ scale: 0.9, opacity: 0 }}
+            initial={{ scale: 0.95, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             transition={{ duration: 0.6, type: 'spring' }}
-            className="glass-panel p-6 border border-white/10 shadow-[0_20px_50px_rgba(99,102,241,0.15)] relative overflow-hidden"
+            className="glass-panel p-6 border border-white/10 shadow-[0_20px_50px_rgba(99,102,241,0.15)] relative overflow-hidden group"
           >
-            <div className="absolute top-0 right-0 w-24 h-24 bg-secondary/20 rounded-full blur-2xl"></div>
+            {/* Shimmer Overlay */}
+            <div className="absolute inset-0 pointer-events-none overflow-hidden rounded-2xl shimmer-effect opacity-10"></div>
+            <div className="absolute top-0 right-0 w-32 h-32 bg-secondary/10 rounded-full blur-2xl"></div>
             
             {/* Top Toolbar */}
             <div className="flex items-center justify-between pb-4 border-b border-white/5 mb-4 text-xs text-gray-500">
               <span className="font-semibold text-gray-400 flex items-center gap-1.5">
-                <span className="w-2.5 h-2.5 rounded-full bg-green-500 animate-ping"></span>
-                tts_editor_v2.0.sh
+                <span className={`w-2 h-2 rounded-full ${isHeroPlaying ? 'bg-green-500 animate-ping' : 'bg-yellow-500'}`}></span>
+                neural_engine_v3.0.io
               </span>
-              <span>Cloud Status: Ready</span>
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] bg-primary/20 text-primary border border-primary/30 px-2 py-0.5 rounded-full font-bold uppercase tracking-wider">
+                  Neural GPU
+                </span>
+              </div>
             </div>
 
-            {/* Simulated text area */}
-            <div className="bg-black/20 rounded-xl p-4 min-h-[140px] border border-white/5 text-sm text-gray-300 leading-relaxed mb-4 font-mono relative">
-              <span className="text-primary font-bold">&gt; </span>
-              Voice synthesis translates raw text characters into mathematical wave frequencies, resulting in highly articulation-rich and smooth speech...
-              <div className="absolute bottom-2 right-2 text-[10px] text-gray-600">146 chars</div>
+            {/* Presets Toggle */}
+            <div className="flex gap-2 mb-4">
+              <button
+                onClick={() => {
+                  setHeroPreset('welcome');
+                  setHeroText("Welcome to VoiceFlow AI. Experience the future of neural speech synthesis.");
+                  setHeroSpeed(1.0);
+                  setHeroPitch(1.0);
+                }}
+                className={`text-[10px] px-2.5 py-1 rounded-md transition-all font-semibold ${
+                  heroPreset === 'welcome' ? 'bg-primary/20 text-primary border border-primary/30' : 'bg-white/5 text-gray-400 hover:text-white'
+                }`}
+              >
+                👋 Welcome
+              </button>
+              <button
+                onClick={() => {
+                  setHeroPreset('audiobook');
+                  setHeroText("It was a dark and mysterious night, and the storyteller's voice resonated through the valley.");
+                  setHeroSpeed(0.9);
+                  setHeroPitch(0.95);
+                }}
+                className={`text-[10px] px-2.5 py-1 rounded-md transition-all font-semibold ${
+                  heroPreset === 'audiobook' ? 'bg-primary/20 text-primary border border-primary/30' : 'bg-white/5 text-gray-400 hover:text-white'
+                }`}
+              >
+                📖 Narrative
+              </button>
+              <button
+                onClick={() => {
+                  setHeroPreset('promo');
+                  setHeroText("Breaking News! Unleash studio-grade voice generation directly from your browser.");
+                  setHeroSpeed(1.15);
+                  setHeroPitch(1.1);
+                }}
+                className={`text-[10px] px-2.5 py-1 rounded-md transition-all font-semibold ${
+                  heroPreset === 'promo' ? 'bg-primary/20 text-primary border border-primary/30' : 'bg-white/5 text-gray-400 hover:text-white'
+                }`}
+              >
+                🔥 Promo
+              </button>
+            </div>
+
+            {/* Editable text area */}
+            <div className="bg-black/45 rounded-xl p-4 min-h-[130px] border border-white/5 text-sm text-gray-300 leading-relaxed mb-4 relative focus-within:ring-1 focus-within:ring-primary/50 transition-all">
+              <span className="text-secondary font-bold font-mono">&gt; </span>
+              <textarea
+                value={heroText}
+                onChange={(e) => {
+                  setHeroText(e.target.value);
+                  setHeroPreset(null);
+                }}
+                className="w-full bg-transparent border-0 outline-none text-gray-200 placeholder-gray-600 text-sm leading-relaxed resize-none h-[90px] focus:ring-0"
+                maxLength={120}
+                placeholder="Type something here to preview..."
+              />
+              <div className="absolute bottom-2 right-2 text-[9px] text-gray-600 font-mono">{heroText.length} / 120 chars</div>
             </div>
 
             {/* Slider Mockups */}
-            <div className="space-y-4">
-              <div className="flex justify-between items-center text-xs">
-                <span className="text-gray-400">Speed Multiplier</span>
-                <span className="font-mono text-secondary">1.0x</span>
-              </div>
-              <div className="h-1.5 bg-white/5 rounded-full overflow-hidden relative">
-                <div className="absolute top-0 left-0 h-full w-[33%] bg-gradient-to-r from-primary to-secondary"></div>
-                <div className="absolute top-0 left-[33%] w-3 h-3 rounded-full bg-white -translate-y-0.5 shadow"></div>
+            <div className="space-y-3.5 bg-white/5 p-3.5 rounded-xl border border-white/5">
+              <div className="space-y-1">
+                <div className="flex justify-between items-center text-[10px] uppercase font-bold tracking-wider">
+                  <span className="text-gray-400">Pace / Speed</span>
+                  <span className="font-mono text-secondary">{heroSpeed.toFixed(2)}x</span>
+                </div>
+                <input 
+                  type="range" min="0.6" max="1.5" step="0.05"
+                  value={heroSpeed}
+                  onChange={(e) => setHeroSpeed(parseFloat(e.target.value))}
+                  className="w-full accent-secondary bg-black/40 h-1 rounded-lg appearance-none cursor-pointer"
+                />
               </div>
 
-              <div className="flex justify-between items-center text-xs pt-1">
-                <span className="text-gray-400">Voice Inflection (Pitch)</span>
-                <span className="font-mono text-primary">1.2</span>
+              <div className="space-y-1">
+                <div className="flex justify-between items-center text-[10px] uppercase font-bold tracking-wider">
+                  <span className="text-gray-400">Tone / Pitch</span>
+                  <span className="font-mono text-primary">{heroPitch.toFixed(2)}</span>
+                </div>
+                <input 
+                  type="range" min="0.6" max="1.5" step="0.05"
+                  value={heroPitch}
+                  onChange={(e) => setHeroPitch(parseFloat(e.target.value))}
+                  className="w-full accent-primary bg-black/40 h-1 rounded-lg appearance-none cursor-pointer"
+                />
               </div>
-              <div className="h-1.5 bg-white/5 rounded-full overflow-hidden relative">
-                <div className="absolute top-0 left-0 h-full w-[50%] bg-gradient-to-r from-primary to-secondary"></div>
-                <div className="absolute top-0 left-[50%] w-3 h-3 rounded-full bg-white -translate-y-0.5 shadow"></div>
+            </div>
+
+            {/* Simulated pipeline steps */}
+            <div className="mt-4 flex items-center justify-between text-[10px] text-gray-500 font-mono bg-black/20 p-2.5 rounded-lg border border-white/5">
+              <div className="flex items-center gap-1.5">
+                <span className={`w-1.5 h-1.5 rounded-full ${heroStatus === 'normalizing' ? 'bg-primary animate-ping' : heroStatus === 'synthesizing' || heroStatus === 'playing' ? 'bg-primary' : 'bg-gray-700'}`}></span>
+                <span className={heroStatus === 'normalizing' ? 'text-primary' : 'text-gray-500'}>NORM</span>
+              </div>
+              <span className="text-gray-700">&rarr;</span>
+              <div className="flex items-center gap-1.5">
+                <span className={`w-1.5 h-1.5 rounded-full ${heroStatus === 'synthesizing' ? 'bg-secondary animate-ping' : heroStatus === 'playing' ? 'bg-secondary' : 'bg-gray-700'}`}></span>
+                <span className={heroStatus === 'synthesizing' ? 'text-secondary' : 'text-gray-500'}>ACOUSTIC</span>
+              </div>
+              <span className="text-gray-700">&rarr;</span>
+              <div className="flex items-center gap-1.5">
+                <span className={`w-1.5 h-1.5 rounded-full ${heroStatus === 'playing' ? 'bg-green-500 animate-ping' : 'bg-gray-700'}`}></span>
+                <span className={heroStatus === 'playing' ? 'text-green-400' : 'text-gray-500'}>WAVE</span>
               </div>
             </div>
 
             {/* Audio Wave Visualizer Panel (Functional) */}
-            <div className="mt-6 pt-4 border-t border-white/5 flex items-center justify-between">
+            <div className="mt-5 pt-4 border-t border-white/5 flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <button 
                   onClick={handlePlayHeroMockup}
-                  className={`w-10 h-10 rounded-full flex items-center justify-center text-white shadow-lg hover:scale-105 transition-transform duration-300 ${
-                    isHeroPlaying ? 'bg-red-500' : 'bg-gradient-to-tr from-primary to-secondary'
+                  className={`w-11 h-11 rounded-full flex items-center justify-center text-white shadow-lg hover:scale-105 transition-all duration-300 ${
+                    isHeroPlaying || heroStatus !== 'idle' ? 'bg-red-500 shadow-red-500/20' : 'bg-gradient-to-tr from-primary to-secondary shadow-primary/20'
                   }`}
                 >
-                  {isHeroPlaying ? (
+                  {isHeroPlaying || heroStatus !== 'idle' ? (
                     <Square size={16} fill="currentColor" />
                   ) : (
                     <Play size={16} fill="currentColor" className="ml-0.5" />
                   )}
                 </button>
                 <div>
-                  <h4 className="text-xs text-white font-medium">preview_track_9.wav</h4>
-                  <p className="text-[10px] text-gray-500">{isHeroPlaying ? 'Playing speech preview...' : 'Duration: 4.8s'}</p>
+                  <h4 className="text-xs text-white font-semibold flex items-center gap-1">
+                    {heroStatus === 'idle' && 'engine_ready.wav'}
+                    {heroStatus === 'normalizing' && 'Normalizing script...'}
+                    {heroStatus === 'synthesizing' && 'Generating voice vectors...'}
+                    {heroStatus === 'playing' && 'Streaming output...'}
+                  </h4>
+                  <p className="text-[10px] text-gray-500">
+                    {isHeroPlaying ? 'Simulated Latency: 145ms' : 'Status: Idle'}
+                  </p>
                 </div>
               </div>
 
@@ -557,7 +701,7 @@ export default function Landing() {
                     className={`w-0.75 sm:w-1 bg-gradient-to-t from-primary to-secondary rounded-full ${
                       isHeroPlaying ? 'animate-wave-bar' : 'opacity-40'
                     } wave-height-${num}`}
-                    style={{ animationDelay: `${num * 0.15}s` }}
+                    style={{ animationDelay: `${num * 0.12}s` }}
                   ></div>
                 ))}
               </div>
@@ -779,6 +923,140 @@ export default function Landing() {
             <Volume2 size={16} className={isDemoPlaying ? 'text-primary animate-bounce' : 'text-gray-600'} />
           </div>
         </motion.div>
+      </section>
+
+      {/* Robotic vs Neural Comparison Section */}
+      <section className="max-w-6xl mx-auto w-full px-4 py-16 border-t border-white/5 relative">
+        <div className="absolute top-[30%] left-[50%] w-80 h-80 bg-primary/5 rounded-full blur-[100px] pointer-events-none -translate-x-1/2"></div>
+        <div className="text-center mb-12">
+          <span className="text-xs bg-secondary/15 text-secondary border border-secondary/25 px-3 py-1 rounded-full font-bold uppercase tracking-wider">
+            Engine Duel
+          </span>
+          <h2 className="text-3xl font-extrabold text-white mt-4 mb-3">Robotic vs. Lifelike Speech</h2>
+          <p className="text-gray-400 max-w-xl mx-auto">Compare legacy text-to-speech with VoiceFlow's hyper-realistic neural architecture.</p>
+        </div>
+
+        <div className="grid md:grid-cols-2 gap-8 items-stretch max-w-5xl mx-auto">
+          {/* Standard Card */}
+          <div className="bg-[#121217] rounded-2xl border border-white/5 p-6 md:p-8 flex flex-col justify-between relative overflow-hidden transition-all duration-300 hover:border-white/10 group">
+            <div>
+              <div className="flex items-center justify-between mb-6">
+                <div>
+                  <h3 className="text-lg font-bold text-gray-400">Legacy Standard TTS</h3>
+                  <p className="text-xs text-gray-600">Linear Wave Synthesis</p>
+                </div>
+                <span className="text-[10px] bg-white/5 border border-white/10 text-gray-500 px-2.5 py-1 rounded-full font-mono uppercase tracking-wider font-bold">
+                  Legacy
+                </span>
+              </div>
+              <p className="text-sm text-gray-500 leading-relaxed mb-6 font-sans">
+                "Warning. Standard synthesis active. Pacing vectors are linear. Pitch is flat and robotic."
+              </p>
+            </div>
+
+            <div className="space-y-6">
+              {/* Mechanical wave visualizer */}
+              <div className="h-14 bg-black/40 rounded-xl p-3.5 border border-white/5 flex items-center justify-center gap-1.5 overflow-hidden">
+                {playingCompare === 'standard' ? (
+                  [...Array(24)].map((_, i) => (
+                    <div 
+                      key={i} 
+                      className="w-1.5 bg-gray-600 rounded-full animate-flat-wave"
+                      style={{ height: '35%', animationDelay: `${i * 0.04}s` }}
+                    ></div>
+                  ))
+                ) : (
+                  <div className="h-0.5 w-full bg-white/5"></div>
+                )}
+              </div>
+
+              <button
+                onClick={() => handlePlayComparison('standard')}
+                className={`w-full py-3 rounded-xl font-bold text-sm flex items-center justify-center space-x-2 transition-all duration-300 ${
+                  playingCompare === 'standard'
+                    ? 'bg-red-500/10 text-red-500 border border-red-500/20 hover:bg-red-500/20'
+                    : 'bg-white/5 text-gray-400 border border-white/10 hover:bg-white/10 hover:text-white'
+                }`}
+              >
+                {playingCompare === 'standard' ? (
+                  <>
+                    <Square size={14} fill="currentColor" />
+                    <span>Stop Standard Audio</span>
+                  </>
+                ) : (
+                  <>
+                    <Play size={14} fill="currentColor" className="ml-0.5" />
+                    <span>Hear Standard TTS</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+
+          {/* Neural Card */}
+          <div className="glow-card p-6 md:p-8 flex flex-col justify-between relative overflow-hidden border-2 border-primary/20 hover:border-primary/40 group">
+            {/* Ambient subtle glow background */}
+            <div className="absolute top-0 right-0 w-32 h-32 bg-primary/10 rounded-full blur-2xl group-hover:bg-primary/20 transition-colors"></div>
+            <div>
+              <div className="flex items-center justify-between mb-6">
+                <div>
+                  <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                    <span>VoiceFlow Neural Engine</span>
+                    <Sparkles size={16} className="text-secondary animate-pulse" />
+                  </h3>
+                  <p className="text-xs text-primary/80 font-semibold uppercase tracking-wider">Deep Learning Vocoder</p>
+                </div>
+                <span className="text-[10px] bg-gradient-to-r from-primary to-secondary text-white px-2.5 py-1 rounded-full font-bold uppercase tracking-wider shadow-sm">
+                  Active AI
+                </span>
+              </div>
+              <p className="text-sm text-gray-300 leading-relaxed mb-6 font-sans">
+                "Hi! This is Emma, powered by VoiceFlow's next-gen neural engine. Notice how the pacing naturally slows down for emphasis, and the tone carries warm, human-like expression."
+              </p>
+            </div>
+
+            <div className="space-y-6">
+              {/* Beautiful wave visualizer */}
+              <div className="h-14 bg-black/40 rounded-xl p-3.5 border border-white/5 flex items-center justify-center gap-1 overflow-hidden">
+                {playingCompare === 'neural' ? (
+                  [...Array(24)].map((_, i) => (
+                    <div 
+                      key={i} 
+                      className="w-1.5 bg-gradient-to-t from-primary to-secondary rounded-full animate-wave-bar"
+                      style={{ 
+                        height: `${30 + Math.sin(i * 0.8) * 55}%`,
+                        animationDelay: `${i * 0.05}s`
+                      }}
+                    ></div>
+                  ))
+                ) : (
+                  <div className="h-0.5 w-full bg-white/5"></div>
+                )}
+              </div>
+
+              <button
+                onClick={() => handlePlayComparison('neural')}
+                className={`w-full py-3 rounded-xl font-bold text-sm flex items-center justify-center space-x-2 transition-all duration-300 ${
+                  playingCompare === 'neural'
+                    ? 'bg-red-500/10 text-red-500 border border-red-500/20 hover:bg-red-500/20'
+                    : 'bg-primary text-white hover:opacity-90 shadow-md shadow-primary/10'
+                }`}
+              >
+                {playingCompare === 'neural' ? (
+                  <>
+                    <Square size={14} fill="currentColor" />
+                    <span>Stop Neural Audio</span>
+                  </>
+                ) : (
+                  <>
+                    <Play size={14} fill="currentColor" className="ml-0.5" />
+                    <span>Hear Neural Voice</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
       </section>
 
       {/* Voice Showcase Library Section */}
@@ -1004,6 +1282,198 @@ export default function Landing() {
         </div>
       </section>
 
+      {/* Interactive AI Speech Pipeline Visualizer */}
+      <section className="max-w-7xl mx-auto w-full px-4 py-16 border-t border-white/5 relative">
+        <div className="absolute top-[20%] right-[-10%] w-[35rem] h-[35rem] bg-secondary/5 rounded-full blur-[160px] pointer-events-none -z-10"></div>
+        <div className="text-center mb-12">
+          <span className="text-xs bg-primary/15 text-primary border border-primary/25 px-3 py-1 rounded-full font-bold uppercase tracking-wider">
+            Neural Architecture
+          </span>
+          <h2 className="text-3xl font-bold text-white mt-4 mb-3">AI Speech Pipeline</h2>
+          <p className="text-gray-400 max-w-xl mx-auto">See how raw characters are converted into natural speech using VoiceFlow's neural modeling flow.</p>
+        </div>
+
+        <div className="grid lg:grid-cols-12 gap-8 items-stretch max-w-6xl mx-auto">
+          {/* Left Column: Pipeline Stages Steps */}
+          <div className="lg:col-span-5 flex flex-col justify-center space-y-4">
+            {[
+              { id: 0, title: "1. Text Normalization", subtitle: "Prepares raw text symbols & formats" },
+              { id: 1, title: "2. Phonetic Alignment", subtitle: "Translates characters to phonetic sounds" },
+              { id: 2, title: "3. Acoustic Modeling", subtitle: "Predicts sound pitch & tone matrices" },
+              { id: 3, title: "4. Neural Vocoding", subtitle: "Constructs raw audio waves at 48kHz" }
+            ].map((stage) => (
+              <button
+                key={stage.id}
+                onClick={() => setActiveStage(stage.id)}
+                className={`w-full text-left p-5 rounded-2xl border transition-all duration-300 relative overflow-hidden flex items-start gap-4 ${
+                  activeStage === stage.id
+                    ? 'bg-gradient-to-r from-surface to-primary/10 border-primary/45 shadow-lg shadow-primary/5'
+                    : 'bg-surface/40 border-white/5 text-gray-400 hover:bg-surface hover:text-white hover:border-white/10'
+                }`}
+              >
+                {activeStage === stage.id && (
+                  <div className="absolute left-0 top-0 bottom-0 w-1 bg-gradient-to-b from-primary to-secondary"></div>
+                )}
+                <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 font-bold text-sm ${
+                  activeStage === stage.id ? 'bg-primary text-white' : 'bg-white/5 text-gray-500'
+                }`}>
+                  {stage.id + 1}
+                </div>
+                <div>
+                  <h3 className={`font-semibold text-base ${activeStage === stage.id ? 'text-white' : 'text-gray-300'}`}>
+                    {stage.title}
+                  </h3>
+                  <p className="text-xs text-gray-500 mt-1 font-medium">{stage.subtitle}</p>
+                </div>
+              </button>
+            ))}
+          </div>
+
+          {/* Right Column: Visual Stage Detail Card */}
+          <div className="lg:col-span-7">
+            <div className="glow-card p-6 md:p-8 min-h-[420px] flex flex-col justify-between border border-white/5 relative">
+              <div className="absolute inset-0 pointer-events-none shimmer-effect opacity-5"></div>
+              
+              {/* Dynamic Interactive Panel */}
+              <div>
+                <div className="flex items-center justify-between pb-4 border-b border-white/5 mb-6">
+                  <span className="text-[10px] font-mono text-secondary uppercase font-bold tracking-wider">
+                    Stage Process {activeStage + 1} of 4
+                  </span>
+                  <span className="text-[10px] bg-green-500/20 text-green-400 px-2 py-0.5 rounded font-mono font-bold">
+                    ACTIVE FLOW
+                  </span>
+                </div>
+
+                {activeStage === 0 && (
+                  <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
+                    <h3 className="text-xl font-bold text-white flex items-center gap-2">
+                      <Zap size={20} className="text-primary" />
+                      Text Normalization & Prep
+                    </h3>
+                    <p className="text-sm text-gray-400 leading-relaxed">
+                      First, the raw text script is normalized. The engine identifies abbreviation markers, symbol structures, phone numbers, and numbers, expanding them to full spoken words.
+                    </p>
+                    
+                    <div className="bg-black/35 rounded-xl border border-white/5 p-4 space-y-3 font-mono text-xs text-left">
+                      <div className="text-gray-500">&gt; Input Script:</div>
+                      <div className="text-red-400 pl-4 bg-red-500/5 py-1 rounded">"Launch v3.0 on 2026-06-15 at $15."</div>
+                      <div className="text-gray-500 mt-2">&gt; Normalized Output:</div>
+                      <div className="text-green-400 pl-4 bg-green-500/5 py-1 rounded">"Launch version three point zero on June fifteenth twenty twenty-six at fifteen dollars."</div>
+                    </div>
+                  </motion.div>
+                )}
+
+                {activeStage === 1 && (
+                  <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
+                    <h3 className="text-xl font-bold text-white flex items-center gap-2">
+                      <Languages size={20} className="text-secondary" />
+                      Phonetic Mapping & Accent Analysis
+                    </h3>
+                    <p className="text-sm text-gray-400 leading-relaxed">
+                      The normalized words are converted into linguistic phoneme codes, defining word stresses, sentence breaks, and dialect accents (e.g. US vs UK English, or Sinhala syllables).
+                    </p>
+                    
+                    <div className="bg-black/35 rounded-xl border border-white/5 p-4 space-y-3 font-mono text-xs text-left">
+                      <div className="text-gray-500">&gt; Text Phrase:</div>
+                      <div className="text-gray-300 pl-4 bg-white/5 py-1 rounded">"VoiceFlow Engine"</div>
+                      <div className="text-gray-500 mt-2">&gt; Phoneme Representation:</div>
+                      <div className="text-secondary pl-4 bg-secondary/5 py-1 rounded">/vɔɪs/ /floʊ/ /ˈɛn.dʒɪn/</div>
+                      <div className="text-gray-500 mt-2">&gt; Syllable Stress Map:</div>
+                      <div className="text-primary pl-4 bg-primary/5 py-1 rounded">[Primary Stress: "Voice", "En"]</div>
+                    </div>
+                  </motion.div>
+                )}
+
+                {activeStage === 2 && (
+                  <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
+                    <h3 className="text-xl font-bold text-white flex items-center gap-2">
+                      <Settings2 size={20} className="text-blue-400" />
+                      Acoustic Feature Extraction
+                    </h3>
+                    <p className="text-sm text-gray-400 leading-relaxed">
+                      The phoneme strings are parsed by a neural acoustic model, mapping exact speech frequencies, volume inflections, and emotional characteristics into a complex Mel-spectrogram map.
+                    </p>
+                    
+                    <div className="bg-black/35 rounded-xl border border-white/5 p-4 space-y-2 text-left">
+                      <div className="text-xs font-mono text-gray-500 mb-2">&gt; Synthesizing Mel-Spectrogram Matrix (80 Frequency Channels):</div>
+                      <div className="grid grid-cols-8 gap-1 h-20 items-end bg-black/20 p-2 rounded border border-white/5">
+                        {[50, 80, 20, 90, 60, 40, 75, 10, 85, 30, 95, 65, 45, 70, 15, 80, 55, 35, 90, 60, 40, 75, 20, 85].map((val, idx) => (
+                          <div
+                            key={idx}
+                            className="bg-gradient-to-t from-blue-500/20 to-primary/80 rounded-sm w-full"
+                            style={{ height: `${val}%` }}
+                          ></div>
+                        ))}
+                      </div>
+                      <div className="text-[10px] font-mono text-gray-600 mt-1 flex justify-between">
+                        <span>0ms (Start)</span>
+                        <span>Time Duration Axis</span>
+                        <span>420ms (End)</span>
+                      </div>
+                    </div>
+                  </motion.div>
+                )}
+
+                {activeStage === 3 && (
+                  <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
+                    <h3 className="text-xl font-bold text-white flex items-center gap-2">
+                      <Cpu size={20} className="text-green-400" />
+                      Neural Vocoding Wave Output
+                    </h3>
+                    <p className="text-sm text-gray-400 leading-relaxed">
+                      Finally, the GPU neural vocoder acts on the Mel-spectrogram, predicting phase relationships and reconstructing standard high-fidelity audio output sampled at 48kHz.
+                    </p>
+                    
+                    <div className="bg-black/35 rounded-xl border border-white/5 p-4 text-left">
+                      <div className="text-xs font-mono text-gray-500 mb-2">&gt; Reconstructed Waveform:</div>
+                      <div className="h-16 flex items-center justify-center bg-black/20 rounded border border-white/5 relative overflow-hidden">
+                        {/* Dynamic pipeline wave animation */}
+                        <div className="absolute inset-0 flex items-center justify-center opacity-30">
+                          {[...Array(60)].map((_, i) => (
+                            <div
+                              key={i}
+                              className="w-1 bg-gradient-to-y from-green-400 to-primary rounded-full mx-[1px]"
+                              style={{
+                                height: `${20 + Math.sin(i * 0.4) * 60}%`,
+                              }}
+                            ></div>
+                          ))}
+                        </div>
+                        <div className="z-10 text-[10px] font-mono text-green-400 bg-black/50 px-2.5 py-1 rounded-full border border-green-500/20 animate-pulse">
+                          WAV File Output Sample Ready: 48,000 Hz
+                        </div>
+                      </div>
+                    </div>
+                  </motion.div>
+                )}
+              </div>
+
+              {/* Progress Flow Connection Lines */}
+              <div className="mt-8 pt-4 border-t border-white/5 flex items-center justify-between text-xs text-gray-500 font-mono">
+                <span>Current State: {activeStage === 3 ? "Pipeline Complete" : "Next Stage Pending"}</span>
+                <div className="flex items-center gap-2">
+                  <button
+                    disabled={activeStage === 0}
+                    onClick={() => setActiveStage(prev => prev - 1)}
+                    className="px-2.5 py-1 rounded bg-white/5 border border-white/10 hover:bg-white/10 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed"
+                  >
+                    &larr; Prev
+                  </button>
+                  <button
+                    disabled={activeStage === 3}
+                    onClick={() => setActiveStage(prev => prev + 1)}
+                    className="px-2.5 py-1 rounded bg-primary text-white hover:opacity-90 disabled:opacity-30 disabled:cursor-not-allowed"
+                  >
+                    Next &rarr;
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* Step by Step - How It Works */}
       <section className="max-w-7xl mx-auto w-full px-4 py-16 border-t border-white/5 relative">
         <div className="text-center mb-16">
@@ -1135,19 +1605,70 @@ export default function Landing() {
               <span className="text-[9px] bg-secondary text-white px-1.5 py-0.5 rounded-full font-bold uppercase">Save 20%</span>
             </button>
           </div>
+
+          {/* Volume Calculator Slider */}
+          <div className="max-w-xl mx-auto mt-10 p-5 rounded-2xl bg-white/5 border border-white/10 text-left space-y-4">
+            <div className="flex justify-between items-center text-xs sm:text-sm font-semibold text-gray-400">
+              <span>Estimated Monthly Characters:</span>
+              <span className="text-primary font-bold text-base">
+                {priceSliderVal === 0 && "10,000"}
+                {priceSliderVal === 1 && "100,000"}
+                {priceSliderVal === 2 && "250,000"}
+                {priceSliderVal === 3 && "1,000,000"}
+                {priceSliderVal === 4 && "2,500,000"}
+                {priceSliderVal === 5 && "5,000,000+"}
+              </span>
+            </div>
+            
+            <input 
+              type="range" min="0" max="5" step="1"
+              value={priceSliderVal}
+              onChange={(e) => setPriceSliderVal(parseInt(e.target.value))}
+              className="w-full accent-primary bg-black/40 h-2 rounded-lg appearance-none cursor-pointer"
+            />
+            
+            <div className="flex justify-between text-[10px] text-gray-500 font-semibold uppercase tracking-wider font-mono">
+              <span>10k</span>
+              <span>100k</span>
+              <span>250k</span>
+              <span>1M</span>
+              <span>2.5M</span>
+              <span>5M+</span>
+            </div>
+
+            <div className="h-px bg-white/5 pt-1"></div>
+            
+            <div className="flex justify-between items-center text-xs text-gray-400 font-medium">
+              <span>Approximate narration time:</span>
+              <span className="text-secondary font-bold font-mono">
+                {priceSliderVal === 0 && "~10 minutes"}
+                {priceSliderVal === 1 && "~1.7 hours"}
+                {priceSliderVal === 2 && "~4.2 hours"}
+                {priceSliderVal === 3 && "~16.7 hours"}
+                {priceSliderVal === 4 && "~41.7 hours"}
+                {priceSliderVal === 5 && "~83.3+ hours"}
+              </span>
+            </div>
+          </div>
         </div>
 
         {/* Pricing Cards Grid */}
         <div className="grid md:grid-cols-3 gap-8 items-stretch">
           {/* Free Plan */}
-          <div className="glow-card p-8 flex flex-col justify-between relative border border-white/5">
+          <div className={`glow-card p-8 flex flex-col justify-between relative border transition-all duration-300 ${
+            priceSliderVal <= 1 ? 'border-primary shadow-xl shadow-primary/5 scale-[1.02] opacity-100' : 'border-white/5 opacity-50 hover:opacity-80'
+          }`}>
             <div>
               <h3 className="text-lg font-bold text-gray-300 mb-2">Free Starter</h3>
               <p className="text-xs text-gray-500 mb-6">Perfect for evaluating speech quality.</p>
               
               <div className="mb-6 flex items-baseline gap-1">
-                <span className="text-4xl font-extrabold text-white">$0</span>
-                <span className="text-sm text-gray-500">/ forever</span>
+                <span className="text-4xl font-extrabold text-white">
+                  {priceSliderVal === 0 ? "$0" : "$9"}
+                </span>
+                <span className="text-sm text-gray-500">
+                  {priceSliderVal === 0 ? "/ forever" : billingPeriod === 'monthly' ? "/ month" : "/ month (billed annually)"}
+                </span>
               </div>
 
               <div className="h-px bg-white/5 mb-6"></div>
@@ -1155,7 +1676,11 @@ export default function Landing() {
               <ul className="space-y-3.5 mb-8 text-sm text-gray-400">
                 <li className="flex items-center gap-2">
                   <Check size={16} className="text-primary shrink-0" />
-                  <span>10,000 characters / month</span>
+                  <span className={priceSliderVal === 0 ? "text-white font-semibold" : ""}>10,000 characters / month</span>
+                </li>
+                <li className="flex items-center gap-2">
+                  <Check size={16} className="text-primary shrink-0" />
+                  <span className={priceSliderVal === 1 ? "text-white font-semibold" : ""}>100,000 characters / month</span>
                 </li>
                 <li className="flex items-center gap-2">
                   <Check size={16} className="text-primary shrink-0" />
@@ -1165,20 +1690,24 @@ export default function Landing() {
                   <Check size={16} className="text-primary shrink-0" />
                   <span>MP3 high quality downloads</span>
                 </li>
-                <li className="flex items-center gap-2 opacity-40">
+                <li className={`flex items-center gap-2 ${priceSliderVal === 0 ? 'opacity-40' : ''}`}>
                   <Check size={16} className="text-primary shrink-0" />
-                  <span className="line-through">Commercial usage license</span>
+                  <span>{priceSliderVal === 0 ? "No commercial license" : "Commercial license included"}</span>
                 </li>
               </ul>
             </div>
 
             <Link to="/register" className="btn-secondary w-full text-center py-3 text-sm flex justify-center font-bold">
-              Sign Up Free
+              {priceSliderVal === 0 ? "Sign Up Free" : "Select Starter Plan"}
             </Link>
           </div>
 
           {/* Pro Plan (Glowing/Popular) */}
-          <div className="glow-card p-8 border-2 border-primary bg-gradient-to-b from-primary/5 to-surface/60 flex flex-col justify-between relative shadow-xl shadow-primary/10">
+          <div className={`glow-card p-8 border-2 flex flex-col justify-between relative shadow-xl transition-all duration-300 ${
+            priceSliderVal === 2 || priceSliderVal === 3
+              ? 'border-primary bg-gradient-to-b from-primary/5 to-surface/60 shadow-primary/10 scale-[1.02] opacity-100'
+              : 'border-white/5 opacity-50 hover:opacity-80'
+          }`}>
             <span className="absolute -top-3.5 right-6 bg-gradient-to-r from-primary to-secondary text-white text-[10px] uppercase font-bold tracking-wider px-3.5 py-1 rounded-full shadow-md">
               Most Popular
             </span>
@@ -1189,7 +1718,10 @@ export default function Landing() {
 
               <div className="mb-6 flex items-baseline gap-1">
                 <span className="text-4xl font-extrabold text-white">
-                  {billingPeriod === 'monthly' ? '$19' : '$15'}
+                  {priceSliderVal === 2
+                    ? (billingPeriod === 'monthly' ? '$19' : '$15')
+                    : (billingPeriod === 'monthly' ? '$49' : '$39')
+                  }
                 </span>
                 <span className="text-sm text-gray-500">/ month</span>
               </div>
@@ -1199,7 +1731,11 @@ export default function Landing() {
               <ul className="space-y-3.5 mb-8 text-sm text-gray-300 font-medium">
                 <li className="flex items-center gap-2">
                   <Check size={16} className="text-secondary shrink-0" />
-                  <span>250,000 characters / month</span>
+                  <span className={priceSliderVal === 2 ? "text-white font-bold" : ""}>250,000 characters / month</span>
+                </li>
+                <li className="flex items-center gap-2">
+                  <Check size={16} className="text-secondary shrink-0" />
+                  <span className={priceSliderVal === 3 ? "text-white font-bold" : ""}>1,000,000 characters / month</span>
                 </li>
                 <li className="flex items-center gap-2">
                   <Check size={16} className="text-secondary shrink-0" />
@@ -1213,10 +1749,6 @@ export default function Landing() {
                   <Check size={16} className="text-secondary shrink-0" />
                   <span>Commercial rights included</span>
                 </li>
-                <li className="flex items-center gap-2">
-                  <Check size={16} className="text-secondary shrink-0" />
-                  <span>Priority support lines</span>
-                </li>
               </ul>
             </div>
 
@@ -1226,14 +1758,19 @@ export default function Landing() {
           </div>
 
           {/* Enterprise Plan */}
-          <div className="glow-card p-8 flex flex-col justify-between relative border border-white/5">
+          <div className={`glow-card p-8 flex flex-col justify-between relative border transition-all duration-300 ${
+            priceSliderVal >= 4 ? 'border-primary shadow-xl shadow-primary/5 scale-[1.02] opacity-100' : 'border-white/5 opacity-50 hover:opacity-80'
+          }`}>
             <div>
               <h3 className="text-lg font-bold text-gray-300 mb-2">Enterprise</h3>
               <p className="text-xs text-gray-500 mb-6">Custom scaling for production apps.</p>
 
               <div className="mb-6 flex items-baseline gap-1">
                 <span className="text-4xl font-extrabold text-white">
-                  {billingPeriod === 'monthly' ? '$99' : '$79'}
+                  {priceSliderVal === 4
+                    ? (billingPeriod === 'monthly' ? '$79' : '$63')
+                    : (billingPeriod === 'monthly' ? '$149' : '$119')
+                  }
                 </span>
                 <span className="text-sm text-gray-500">/ month</span>
               </div>
@@ -1243,7 +1780,11 @@ export default function Landing() {
               <ul className="space-y-3.5 mb-8 text-sm text-gray-400">
                 <li className="flex items-center gap-2">
                   <Check size={16} className="text-primary shrink-0" />
-                  <span>Unlimited characters</span>
+                  <span className={priceSliderVal === 4 ? "text-white font-semibold" : ""}>2.5 Million characters / month</span>
+                </li>
+                <li className="flex items-center gap-2">
+                  <Check size={16} className="text-primary shrink-0" />
+                  <span className={priceSliderVal === 5 ? "text-white font-semibold" : ""}>5 Million characters / month</span>
                 </li>
                 <li className="flex items-center gap-2">
                   <Check size={16} className="text-primary shrink-0" />
@@ -1251,17 +1792,13 @@ export default function Landing() {
                 </li>
                 <li className="flex items-center gap-2">
                   <Check size={16} className="text-primary shrink-0" />
-                  <span>Dedicated API access</span>
-                </li>
-                <li className="flex items-center gap-2">
-                  <Check size={16} className="text-primary shrink-0" />
-                  <span>SLA uptime guarantee</span>
+                  <span>Dedicated API access & SLA</span>
                 </li>
               </ul>
             </div>
 
             <Link to="/register" className="btn-secondary w-full text-center py-3 text-sm flex justify-center font-bold">
-              Contact Sales
+              {priceSliderVal === 5 ? "Contact Sales" : "Select Enterprise Plan"}
             </Link>
           </div>
         </div>
