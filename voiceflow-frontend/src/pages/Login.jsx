@@ -5,6 +5,7 @@ import { motion } from 'framer-motion';
 import toast from 'react-hot-toast';
 import { authApi, setToken, setUser } from '../api';
 import loginBanner from '../assets/login_banner.png';
+import Logo from '../components/Logo';
 
 export default function Login({ initialMode }) {
   const navigate = useNavigate();
@@ -369,10 +370,10 @@ export default function Login({ initialMode }) {
           {/* Logo Header */}
           <div className="flex items-center space-x-2.5">
             <Link to="/" className="flex items-center space-x-2.5 group">
-              <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-[#db2777] to-[#a855f7] flex items-center justify-center text-white shadow-md shadow-pink-500/25 group-hover:scale-105 transition-transform duration-300">
-                <Mic2 size={16} />
-              </div>
-              <span className="font-extrabold text-lg tracking-tight text-white group-hover:text-pink-400 transition-colors">VoiceFlow AI</span>
+              <Logo size="sm" className="group-hover:scale-105 transition-transform duration-300" />
+              <span className="font-extrabold text-lg tracking-tight text-white group-hover:text-pink-400 transition-colors font-sans">
+                VoiceFlow<span className="text-secondary ml-0.5">AI</span>
+              </span>
             </Link>
           </div>
 
@@ -525,10 +526,10 @@ export default function Login({ initialMode }) {
           {/* Logo Header */}
           <div className="flex items-center space-x-2.5">
             <Link to="/" className="flex items-center space-x-2.5 group">
-              <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-[#db2777] to-[#a855f7] flex items-center justify-center text-white shadow-md shadow-pink-500/25 group-hover:scale-105 transition-transform duration-300">
-                <Mic2 size={16} />
-              </div>
-              <span className="font-extrabold text-lg tracking-tight text-white group-hover:text-pink-400 transition-colors">VoiceFlow AI</span>
+              <Logo size="sm" className="group-hover:scale-105 transition-transform duration-300" />
+              <span className="font-extrabold text-lg tracking-tight text-white group-hover:text-pink-400 transition-colors font-sans">
+                VoiceFlow<span className="text-secondary ml-0.5">AI</span>
+              </span>
             </Link>
           </div>
 

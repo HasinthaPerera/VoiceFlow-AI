@@ -4,6 +4,7 @@ import { Mic2, LogOut, LayoutDashboard, Shield, Menu, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
 import { getUser } from '../api';
+import Logo from '../components/Logo';
 
 export default function MainLayout() {
   const [user, setUser] = useState(getUser());
@@ -40,12 +41,10 @@ export default function MainLayout() {
       <nav className="border-b border-white/5 bg-background/50 backdrop-blur-xl sticky top-0 z-50">
         <div className="px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
-            <Link to="/" className="flex items-center space-x-2 group">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-primary to-secondary flex items-center justify-center text-white shadow-lg shadow-primary/25 group-hover:scale-105 transition-transform duration-300">
-                <Mic2 size={20} className="animate-pulse" />
-              </div>
-              <span className="font-bold text-xl tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-white to-gray-400">
-                VoiceFlow AI
+            <Link to="/" className="flex items-center space-x-3 group">
+              <Logo size="md" className="group-hover:scale-105 transition-transform duration-300" />
+              <span className="font-black text-xl tracking-tight text-white transition-all duration-500 font-sans">
+                VoiceFlow<span className="bg-clip-text text-transparent bg-gradient-to-r from-primary to-secondary ml-1">AI</span>
               </span>
             </Link>
             

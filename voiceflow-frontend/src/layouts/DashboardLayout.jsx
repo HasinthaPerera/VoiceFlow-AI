@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
 import { getUser, userApi } from '../api';
+import Logo from '../components/Logo';
 
 export default function DashboardLayout() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -87,11 +88,11 @@ export default function DashboardLayout() {
   const Sidebar = () => (
     <div className="flex flex-col h-full bg-surface border-r border-white/5 w-64">
       <div className="h-16 flex items-center px-6 border-b border-white/5">
-        <div className="flex items-center space-x-2">
-          <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-primary to-secondary flex items-center justify-center text-white shadow-lg shadow-primary/25">
-            <Mic2 size={16} />
-          </div>
-          <span className="font-bold text-lg tracking-tight">VoiceFlow AI</span>
+        <div className="flex items-center space-x-2.5">
+          <Logo size="sm" />
+          <span className="font-extrabold text-lg tracking-tight text-white font-sans">
+            VoiceFlow<span className="bg-clip-text text-transparent bg-gradient-to-r from-primary to-secondary ml-1">AI</span>
+          </span>
         </div>
       </div>
       

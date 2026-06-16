@@ -5,6 +5,7 @@ import { motion } from 'framer-motion';
 import toast from 'react-hot-toast';
 import { authApi, setToken, setUser } from '../api';
 import loginBanner from '../assets/login_banner.png';
+import Logo from '../components/Logo';
 
 export default function AdminLogin() {
   const [email, setEmail] = useState('');
@@ -90,12 +91,10 @@ export default function AdminLogin() {
           {/* Logo Header */}
           <div className="flex items-center space-x-2.5">
             <Link to="/" className="flex items-center space-x-2.5 group">
-              <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-primary to-indigo-600 flex items-center justify-center text-white shadow-md shadow-indigo-500/25 group-hover:scale-105 transition-transform duration-300">
-                <ShieldCheck size={16} />
-              </div>
-              <span className="font-extrabold text-lg tracking-tight text-white group-hover:text-primary transition-colors">
-                VoiceFlow AI 
-                <span className="text-primary text-[10px] font-bold px-1.5 py-0.5 rounded bg-primary/10 ml-1.5 border border-primary/20">Admin</span>
+              <Logo size="sm" className="group-hover:scale-105 transition-transform duration-300" />
+              <span className="font-extrabold text-lg tracking-tight text-white group-hover:text-primary transition-colors font-sans">
+                VoiceFlow<span className="text-primary ml-0.5">AI</span>
+                <span className="text-primary text-[10px] font-bold px-1.5 py-0.5 rounded bg-primary/10 ml-1.5 border border-primary/20 align-middle">Admin</span>
               </span>
             </Link>
           </div>
