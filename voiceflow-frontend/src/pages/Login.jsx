@@ -1,7 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { Mail, Lock, Mic2, Eye, EyeOff, Sparkles, Volume2, ArrowRight, Mic, UserPlus, User } from 'lucide-react';
-import { motion } from 'framer-motion';
+import { Mail, Lock, Mic2, Eye, EyeOff, Sparkles, Volume2, ArrowRight, Mic, UserPlus, User, Check, AlertCircle, Play, Square } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
 import { authApi, setToken, setUser } from '../api';
 import loginBanner from '../assets/login_banner.png';
@@ -14,13 +14,30 @@ export default function Login({ initialMode }) {
   // Mode state: true for Sign In (Login), false for Sign Up (Register)
   const [isLogin, setIsLogin] = useState(true);
 
-  // Synchronize state with route or initial prop
+  // Initialize email & rememberMe from localStorage
+  const [email, setEmail] = useState(() => localStorage.getItem('remembered_voiceflow_email') || '');
+  const [rememberMe, setRememberMe] = useState(() => !!localStorage.getItem('remembered_voiceflow_email'));
+
+  // Synchronize state with route or initial prop and reset preview / speech
   useEffect(() => {
     const isRegister = location.pathname === '/register' || initialMode === 'register';
     setIsLogin(!isRegister);
+    
+    // Stop any active previews or listening overlays when switching pages
+    if ('speechSynthesis' in window) {
+      window.speechSynthesis.cancel();
+    }
+    setIsPlayingPreview(false);
+    setIsListening(false);
   }, [location.pathname, initialMode]);
 
   const toggleMode = () => {
+    if ('speechSynthesis' in window) {
+      window.speechSynthesis.cancel();
+    }
+    setIsPlayingPreview(false);
+    setIsListening(false);
+    
     if (isLogin) {
       navigate('/register');
     } else {
@@ -29,11 +46,9 @@ export default function Login({ initialMode }) {
   };
 
   // Login States
-  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isLoginLoading, setIsLoginLoading] = useState(false);
-  const [rememberMe, setRememberMe] = useState(false);
 
   // Register States
   const [regName, setRegName] = useState('');
@@ -51,6 +66,14 @@ export default function Login({ initialMode }) {
   const [forgotStep, setForgotStep] = useState(1);
   const [isSendingForgot, setIsSendingForgot] = useState(false);
   const [isListening, setIsListening] = useState(false);
+  const [voiceCommandMessage, setVoiceCommandMessage] = useState('');
+
+  // Audio Showcase Preview State
+  const [isPlayingPreview, setIsPlayingPreview] = useState(false);
+
+  // References
+  const recognitionRef = useRef(null);
+
 
   // Voice Assistant Speech Recognition
   const startVoiceAssistant = () => {
@@ -60,38 +83,108 @@ export default function Login({ initialMode }) {
       return;
     }
 
+    if (isPlayingPreview) {
+      window.speechSynthesis.cancel();
+      setIsPlayingPreview(false);
+    }
+
     const recognition = new SpeechRecognition();
     recognition.lang = 'en-US';
     recognition.interimResults = false;
     recognition.maxAlternatives = 1;
+    recognitionRef.current = recognition;
 
     recognition.onstart = () => {
       setIsListening(true);
-      toast.success("Voice assistant active. Say 'forgot password'...", { id: 'voice-active', duration: 4000 });
+      setVoiceCommandMessage("Listening for command...");
     };
 
     recognition.onresult = (event) => {
-      const transcript = event.results[0][0].transcript.toLowerCase();
+      const transcript = event.results[0][0].transcript.toLowerCase().trim();
       console.log('Voice assistant transcript:', transcript);
+      setVoiceCommandMessage(`Recognized: "${transcript}"`);
       
+      const speakBack = (text) => {
+        if ('speechSynthesis' in window) {
+          window.speechSynthesis.cancel();
+          const utterance = new SpeechSynthesisUtterance(text);
+          // Try to select a natural voice
+          const voices = window.speechSynthesis.getVoices();
+          const englishVoice = voices.find(v => v.lang.startsWith('en-GB') || v.lang.startsWith('en-US')) || voices[0];
+          if (englishVoice) {
+            utterance.voice = englishVoice;
+          }
+          utterance.rate = 1.05;
+          window.speechSynthesis.speak(utterance);
+        }
+      };
+
       if (
         transcript.includes('forgot password') || 
         transcript.includes('lost password') || 
         transcript.includes('reset password') || 
         transcript.includes('forgot my password')
       ) {
-        toast.success('Voice command recognized: "Forgot password"', { icon: '🎙️' });
-        setForgotEmail(email || regEmail);
-        setForgotStep(1);
-        setShowForgotModal(true);
-        
-        if ('speechSynthesis' in window) {
-          const utterance = new SpeechSynthesisUtterance("Opening password recovery helper.");
-          utterance.rate = 1.0;
-          window.speechSynthesis.speak(utterance);
-        }
+        speakBack("Opening password recovery helper.");
+        toast.success('Command: Forgot password', { icon: '🎙️' });
+        setTimeout(() => {
+          setForgotEmail(email || regEmail);
+          setForgotStep(1);
+          setShowForgotModal(true);
+          setIsListening(false);
+        }, 1200);
+      } else if (
+        transcript.includes('register') || 
+        transcript.includes('sign up') || 
+        transcript.includes('create account') ||
+        transcript.includes('create an account')
+      ) {
+        speakBack("Switching to registration form.");
+        toast.success('Command: Switch to Register', { icon: '🎙️' });
+        setTimeout(() => {
+          navigate('/register');
+          setIsListening(false);
+        }, 1200);
+      } else if (
+        transcript.includes('login') || 
+        transcript.includes('sign in') || 
+        transcript.includes('standard log')
+      ) {
+        speakBack("Switching to login form.");
+        toast.success('Command: Switch to Login', { icon: '🎙️' });
+        setTimeout(() => {
+          navigate('/login');
+          setIsListening(false);
+        }, 1200);
+      } else if (
+        transcript.includes('admin') || 
+        transcript.includes('administrator')
+      ) {
+        speakBack("Redirecting to administrator portal.");
+        toast.success('Command: Redirect to Admin', { icon: '🎙️' });
+        setTimeout(() => {
+          navigate('/admin/login');
+          setIsListening(false);
+        }, 1200);
+      } else if (
+        transcript.includes('help') || 
+        transcript.includes('option') || 
+        transcript.includes('command')
+      ) {
+        speakBack("Available commands are sign up, sign in, forgot password, and admin.");
+        setVoiceCommandMessage('Options: "sign up", "sign in", "forgot password", "admin"');
+        setTimeout(() => {
+          // Restart recognition to let them say another command
+          try {
+            recognition.start();
+          } catch(e) {}
+        }, 4500);
       } else {
-        toast.error(`Command not recognized: "${transcript}". Try saying "forgot password".`);
+        speakBack("Command not recognized.");
+        setVoiceCommandMessage(`Unknown: "${transcript}". Say "help" for commands.`);
+        setTimeout(() => {
+          setIsListening(false);
+        }, 3000);
       }
     };
 
@@ -100,17 +193,18 @@ export default function Login({ initialMode }) {
       if (event.error === 'not-allowed') {
         toast.error("Microphone permission denied. Please enable microphone access in your browser.");
       } else {
-        toast.error("Speech recognition error. Please try again.");
+        toast.error("Speech recognition error.");
       }
       setIsListening(false);
     };
 
     recognition.onend = () => {
-      setIsListening(false);
+      // Auto close listening view if it finished without a valid action
     };
 
     recognition.start();
   };
+
 
   const handleForgotPassword = async (e) => {
     e.preventDefault();
@@ -170,6 +264,14 @@ export default function Login({ initialMode }) {
     setIsLoginLoading(true);
     try {
       const data = await authApi.login(email, password);
+      
+      // Remember me handling
+      if (rememberMe) {
+        localStorage.setItem('remembered_voiceflow_email', email);
+      } else {
+        localStorage.removeItem('remembered_voiceflow_email');
+      }
+
       setToken(data.access_token);
       setUser(data.user);
       toast.success('Welcome back!');
@@ -180,6 +282,7 @@ export default function Login({ initialMode }) {
       setIsLoginLoading(false);
     }
   };
+
 
   const handleRegister = async (e) => {
     e.preventDefault();
@@ -197,7 +300,103 @@ export default function Login({ initialMode }) {
     }
   };
 
+  // Play Showcase Audio Preview (Speech Synthesis with Sync Waves)
+  const playPreview = () => {
+    if (isPlayingPreview) {
+      if ('speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
+      }
+      setIsPlayingPreview(false);
+      return;
+    }
+
+    if (!('speechSynthesis' in window)) {
+      toast.error("Speech synthesis is not supported in this browser. Try Chrome or Safari.", { id: 'tts-synth-err' });
+      return;
+    }
+
+    window.speechSynthesis.cancel(); // Clear any running speech
+
+    const textToSpeak = isLogin 
+      ? "Welcome back to VoiceFlow A.I. Neural Engine version 2.0 is active. Synthesizing audiobook narrator voice sample."
+      : "Hello there! Create an account today on VoiceFlow A.I. and experience our premium voice clone studio.";
+
+    const utterance = new SpeechSynthesisUtterance(textToSpeak);
+    
+    // Choose natural sounding voice if possible
+    const voices = window.speechSynthesis.getVoices();
+    const premiumVoice = voices.find(v => v.lang.startsWith('en-GB') || v.lang.startsWith('en-US')) || voices[0];
+    if (premiumVoice) {
+      utterance.voice = premiumVoice;
+    }
+    
+    utterance.rate = 0.95;
+    utterance.pitch = 1.0;
+
+    utterance.onstart = () => {
+      setIsPlayingPreview(true);
+    };
+
+    utterance.onend = () => {
+      setIsPlayingPreview(false);
+    };
+
+    utterance.onerror = (e) => {
+      console.error("Speech Synthesis error", e);
+      setIsPlayingPreview(false);
+    };
+
+    window.speechSynthesis.speak(utterance);
+  };
+
+  // Mock Social OAuth authentication
+  const handleSocialLogin = (provider) => {
+    toast.loading(`Authenticating via secure ${provider} gateway...`, { id: 'social-login', duration: 1200 });
+    setTimeout(() => {
+      const demoUser = {
+        id: 999,
+        name: `${provider === 'google' ? 'Google' : 'GitHub'} Workspace User`,
+        email: `demo_${provider}@voiceflow.ai`,
+        is_admin: false
+      };
+      setToken(`demo_oauth_token_${provider}_987654`);
+      setUser(demoUser);
+      toast.success(`Welcome! Logged in with ${provider}.`, { id: 'social-login' });
+      navigate('/dashboard/generate');
+    }, 1200);
+  };
+
+  // Password Strength Calculation Helper
+  const getPasswordStrength = (pwd) => {
+    if (!pwd) return { score: 0, label: 'No Password Entered', color: 'bg-white/10', text: 'text-gray-500' };
+    let score = 0;
+    if (pwd.length >= 8) score++;
+    if (/[A-Z]/.test(pwd) && /[a-z]/.test(pwd)) score++;
+    if (/[0-9]/.test(pwd)) score++;
+    if (/[^A-Za-z0-9]/.test(pwd)) score++;
+
+    switch (score) {
+      case 0:
+      case 1:
+        return { score: 1, label: 'Weak (Must be 8+ chars)', color: 'bg-red-500', text: 'text-red-400' };
+      case 2:
+        return { score: 2, label: 'Fair (Try adding numbers)', color: 'bg-orange-500', text: 'text-orange-400' };
+      case 3:
+        return { score: 3, label: 'Good (Add symbols & mixed case)', color: 'bg-yellow-500', text: 'text-yellow-400' };
+      case 4:
+        return { score: 4, label: 'Strong Workspace Password', color: 'bg-green-500', text: 'text-green-400' };
+      default:
+        return { score: 0, label: '', color: 'bg-white/10', text: 'text-gray-500' };
+    }
+  };
+
+  // Check email validation
+  const isValidEmail = (emailStr) => {
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailStr);
+  };
+
   // Framer Motion Animation Variants
+
   const containerVariants = {
     hidden: { opacity: 0 },
     visible: {
@@ -257,7 +456,7 @@ export default function Login({ initialMode }) {
               <motion.div
                 key={isLogin ? 'login-card' : 'register-card'}
                 initial={{ opacity: 0, scale: 0.95, y: 15 }}
-                animate={{ opacity: 1, scale: 1, y: 0 }}
+                animate={{ scale: 1, opacity: 1, y: 0 }}
                 transition={{ duration: 0.5, type: 'spring' }}
                 className="w-80 glass-panel p-5 border border-white/10 shadow-[0_20px_50px_rgba(0,0,0,0.5)] backdrop-blur-xl mb-7"
               >
@@ -283,18 +482,38 @@ export default function Login({ initialMode }) {
 
                     {/* Soundwave bars */}
                     <div className="flex items-end justify-between h-9 gap-1.5 bg-black/25 rounded-xl p-3 border border-white/5">
-                      <div className="w-1 bg-primary/75 rounded-full animate-wave-bar wave-height-1" style={{ animationDelay: '0.1s' }}></div>
-                      <div className="w-1 bg-secondary/80 rounded-full animate-wave-bar wave-height-4" style={{ animationDelay: '0.3s' }}></div>
-                      <div className="w-1 bg-pink-500/85 rounded-full animate-wave-bar wave-height-2" style={{ animationDelay: '0.5s' }}></div>
-                      <div className="w-1 bg-secondary/80 rounded-full animate-wave-bar wave-height-5" style={{ animationDelay: '0.2s' }}></div>
-                      <div className="w-1 bg-primary/75 rounded-full animate-wave-bar wave-height-3" style={{ animationDelay: '0.4s' }}></div>
-                      <div className="w-1 bg-pink-500/85 rounded-full animate-wave-bar wave-height-6" style={{ animationDelay: '0.6s' }}></div>
-                      <div className="w-1 bg-secondary/80 rounded-full animate-wave-bar wave-height-2" style={{ animationDelay: '0.1s' }}></div>
+                      <div className={`w-1 bg-primary/75 rounded-full wave-height-1 ${isPlayingPreview ? 'animate-wave-active' : 'animate-wave-bar'}`} style={{ animationDelay: '0.1s' }}></div>
+                      <div className={`w-1 bg-secondary/80 rounded-full wave-height-4 ${isPlayingPreview ? 'animate-wave-active' : 'animate-wave-bar'}`} style={{ animationDelay: '0.3s' }}></div>
+                      <div className={`w-1 bg-pink-500/85 rounded-full wave-height-2 ${isPlayingPreview ? 'animate-wave-active' : 'animate-wave-bar'}`} style={{ animationDelay: '0.5s' }}></div>
+                      <div className={`w-1 bg-secondary/80 rounded-full wave-height-5 ${isPlayingPreview ? 'animate-wave-active' : 'animate-wave-bar'}`} style={{ animationDelay: '0.2s' }}></div>
+                      <div className={`w-1 bg-primary/75 rounded-full wave-height-3 ${isPlayingPreview ? 'animate-wave-active' : 'animate-wave-bar'}`} style={{ animationDelay: '0.4s' }}></div>
+                      <div className={`w-1 bg-pink-500/85 rounded-full wave-height-6 ${isPlayingPreview ? 'animate-wave-active' : 'animate-wave-bar'}`} style={{ animationDelay: '0.6s' }}></div>
+                      <div className={`w-1 bg-secondary/80 rounded-full wave-height-2 ${isPlayingPreview ? 'animate-wave-active' : 'animate-wave-bar'}`} style={{ animationDelay: '0.1s' }}></div>
                     </div>
 
-                    <div className="flex justify-between items-center text-[9px] text-gray-500 font-mono mt-3">
-                      <span>Status: Synthesizing</span>
-                      <span>4.8s</span>
+                    <div className="flex justify-between items-center text-[10px] mt-3 border-t border-white/5 pt-3">
+                      <button 
+                        type="button"
+                        onClick={playPreview}
+                        className={`flex items-center space-x-1.5 px-3 py-1 rounded-full border transition-all duration-300 font-bold uppercase tracking-wider text-[9px] ${
+                          isPlayingPreview 
+                            ? 'bg-pink-500/25 border-pink-500/50 text-pink-400 shadow-md shadow-pink-500/10' 
+                            : 'bg-white/5 border-white/10 hover:bg-white/10 text-gray-300 hover:text-white'
+                        }`}
+                      >
+                        {isPlayingPreview ? (
+                          <>
+                            <Square size={8} fill="currentColor" />
+                            <span>Stop Demo</span>
+                          </>
+                        ) : (
+                          <>
+                            <Play size={8} fill="currentColor" />
+                            <span>Listen Sample</span>
+                          </>
+                        )}
+                      </button>
+                      <span className="text-[9px] text-gray-500 font-mono">{isPlayingPreview ? "Synthesizing..." : "Sample: 4.8s"}</span>
                     </div>
                   </>
                 ) : (
@@ -319,18 +538,38 @@ export default function Login({ initialMode }) {
 
                     {/* Soundwave bars */}
                     <div className="flex items-end justify-between h-9 gap-1.5 bg-black/25 rounded-xl p-3 border border-white/5">
-                      <div className="w-1 bg-secondary/80 rounded-full animate-wave-bar wave-height-3" style={{ animationDelay: '0.2s' }}></div>
-                      <div className="w-1 bg-primary/75 rounded-full animate-wave-bar wave-height-1" style={{ animationDelay: '0.4s' }}></div>
-                      <div className="w-1 bg-pink-500/85 rounded-full animate-wave-bar wave-height-5" style={{ animationDelay: '0.6s' }}></div>
-                      <div className="w-1 bg-secondary/80 rounded-full animate-wave-bar wave-height-2" style={{ animationDelay: '0.1s' }}></div>
-                      <div className="w-1 bg-primary/75 rounded-full animate-wave-bar wave-height-4" style={{ animationDelay: '0.3s' }}></div>
-                      <div className="w-1 bg-pink-500/85 rounded-full animate-wave-bar wave-height-3" style={{ animationDelay: '0.5s' }}></div>
-                      <div className="w-1 bg-secondary/80 rounded-full animate-wave-bar wave-height-1" style={{ animationDelay: '0.2s' }}></div>
+                      <div className={`w-1 bg-secondary/80 rounded-full wave-height-3 ${isPlayingPreview ? 'animate-wave-active' : 'animate-wave-bar'}`} style={{ animationDelay: '0.2s' }}></div>
+                      <div className={`w-1 bg-primary/75 rounded-full wave-height-1 ${isPlayingPreview ? 'animate-wave-active' : 'animate-wave-bar'}`} style={{ animationDelay: '0.4s' }}></div>
+                      <div className={`w-1 bg-pink-500/85 rounded-full wave-height-5 ${isPlayingPreview ? 'animate-wave-active' : 'animate-wave-bar'}`} style={{ animationDelay: '0.6s' }}></div>
+                      <div className={`w-1 bg-secondary/80 rounded-full wave-height-2 ${isPlayingPreview ? 'animate-wave-active' : 'animate-wave-bar'}`} style={{ animationDelay: '0.1s' }}></div>
+                      <div className={`w-1 bg-primary/75 rounded-full wave-height-4 ${isPlayingPreview ? 'animate-wave-active' : 'animate-wave-bar'}`} style={{ animationDelay: '0.3s' }}></div>
+                      <div className={`w-1 bg-pink-500/85 rounded-full wave-height-3 ${isPlayingPreview ? 'animate-wave-active' : 'animate-wave-bar'}`} style={{ animationDelay: '0.5s' }}></div>
+                      <div className={`w-1 bg-secondary/80 rounded-full wave-height-1 ${isPlayingPreview ? 'animate-wave-active' : 'animate-wave-bar'}`} style={{ animationDelay: '0.2s' }}></div>
                     </div>
 
-                    <div className="flex justify-between items-center text-[9px] text-gray-500 font-mono mt-3">
-                      <span>Status: Voice Cloned</span>
-                      <span>Ready</span>
+                    <div className="flex justify-between items-center text-[10px] mt-3 border-t border-white/5 pt-3">
+                      <button 
+                        type="button"
+                        onClick={playPreview}
+                        className={`flex items-center space-x-1.5 px-3 py-1 rounded-full border transition-all duration-300 font-bold uppercase tracking-wider text-[9px] ${
+                          isPlayingPreview 
+                            ? 'bg-primary/25 border-primary/50 text-primary shadow-md shadow-primary/10' 
+                            : 'bg-white/5 border-white/10 hover:bg-white/10 text-gray-300 hover:text-white'
+                        }`}
+                      >
+                        {isPlayingPreview ? (
+                          <>
+                            <Square size={8} fill="currentColor" />
+                            <span>Stop Demo</span>
+                          </>
+                        ) : (
+                          <>
+                            <Play size={8} fill="currentColor" />
+                            <span>Listen Sample</span>
+                          </>
+                        )}
+                      </button>
+                      <span className="text-[9px] text-gray-500 font-mono">{isPlayingPreview ? "Cloning..." : "Ready"}</span>
                     </div>
                   </>
                 )}
@@ -406,9 +645,16 @@ export default function Login({ initialMode }) {
                     id="email-input"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    className="w-full bg-white/5 border border-white/10 rounded-full pl-11 pr-6 py-3.5 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-secondary/40 focus:border-transparent transition-all duration-300 text-sm focus:bg-white/10"
+                    className="w-full bg-white/5 border border-white/10 rounded-full pl-11 pr-10 py-3.5 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-secondary/40 focus:border-transparent transition-all duration-300 text-sm focus:bg-white/10 input-glow"
                     placeholder="Email Address"
                   />
+                  {email && (
+                    isValidEmail(email) ? (
+                      <Check size={16} className="absolute right-4 top-1/2 -translate-y-1/2 text-emerald-400" />
+                    ) : (
+                      <AlertCircle size={16} className="absolute right-4 top-1/2 -translate-y-1/2 text-rose-400" />
+                    )
+                  )}
                 </div>
               </motion.div>
 
@@ -423,7 +669,7 @@ export default function Login({ initialMode }) {
                     id="password-input"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="w-full bg-white/5 border border-white/10 rounded-full pl-11 pr-12 py-3.5 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-secondary/40 focus:border-transparent transition-all duration-300 text-sm focus:bg-white/10"
+                    className="w-full bg-white/5 border border-white/10 rounded-full pl-11 pr-12 py-3.5 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-secondary/40 focus:border-transparent transition-all duration-300 text-sm focus:bg-white/10 input-glow"
                     placeholder="Password"
                   />
                   <button
@@ -494,6 +740,34 @@ export default function Login({ initialMode }) {
                   )}
                 </button>
               </motion.div>
+
+              <motion.div variants={itemVariants} className="relative flex items-center justify-center my-5">
+                <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-white/10"></div></div>
+                <span className="relative bg-[#0d0a15] px-3 text-[10px] text-gray-500 font-bold uppercase tracking-wider">Or continue with</span>
+              </motion.div>
+
+              <motion.div variants={itemVariants} className="grid grid-cols-2 gap-3">
+                <button
+                  type="button"
+                  onClick={() => handleSocialLogin('google')}
+                  className="flex items-center justify-center space-x-2 py-2.5 px-4 bg-white/5 hover:bg-white/10 border border-white/10 rounded-full text-xs font-bold text-gray-200 hover:text-white transition-all duration-300 hover:scale-[1.02] active:scale-[0.98]"
+                >
+                  <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M12.24 10.285V14.4h6.887c-.648 2.41-2.519 4.2-5.136 4.2A5.714 5.714 0 018.25 12.9a5.714 5.714 0 015.741-5.7 5.617 5.617 0 013.9 1.545l3.07-3.07A10 10 0 1013.99 2 9.99 9.99 0 0024 12c0 .64-.07 1.3-.2 1.9H12.24z"/>
+                  </svg>
+                  <span>Google</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleSocialLogin('github')}
+                  className="flex items-center justify-center space-x-2 py-2.5 px-4 bg-white/5 hover:bg-white/10 border border-white/10 rounded-full text-xs font-bold text-gray-200 hover:text-white transition-all duration-300 hover:scale-[1.02] active:scale-[0.98]"
+                >
+                  <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
+                    <path fillRule="evenodd" clipRule="evenodd" d="M12 2C6.477 2 2 6.477 2 12c0 4.42 2.865 8.17 6.839 9.49.5.092.682-.217.682-.482 0-.237-.008-.866-.013-1.7-2.782.603-3.369-1.34-3.369-1.34-.454-1.156-1.11-1.464-1.11-1.464-.908-.62.069-.608.069-.608 1.003.07 1.531 1.03 1.531 1.03.892 1.529 2.341 1.087 2.91.831.092-.646.35-1.086.636-1.336-2.22-.253-4.555-1.11-4.555-4.943 0-1.091.39-1.984 1.029-2.683-.103-.253-.446-1.27.098-2.647 0 0 .84-.269 2.75 1.025A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.294 2.747-1.025 2.747-1.025.546 1.377.203 2.394.1 2.647.64.699 1.028 1.592 1.028 2.683 0 3.842-2.339 4.687-4.566 4.935.359.309.678.919.678 1.852 0 1.336-.012 2.415-.012 2.743 0 .267.18.579.688.481C19.138 20.167 22 16.418 22 12c0-5.523-4.477-10-10-10z"/>
+                  </svg>
+                  <span>GitHub</span>
+                </button>
+              </motion.div>
             </form>
           </motion.div>
 
@@ -561,9 +835,16 @@ export default function Login({ initialMode }) {
                     required
                     value={regName}
                     onChange={(e) => setRegName(e.target.value)}
-                    className="w-full bg-white/5 border border-white/10 rounded-full pl-11 pr-6 py-3.5 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-secondary/40 focus:border-transparent transition-all duration-300 text-sm focus:bg-white/10"
+                    className="w-full bg-white/5 border border-white/10 rounded-full pl-11 pr-10 py-3.5 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-secondary/40 focus:border-transparent transition-all duration-300 text-sm focus:bg-white/10 input-glow"
                     placeholder="Full Name"
                   />
+                  {regName && (
+                    regName.trim().length >= 2 ? (
+                      <Check size={16} className="absolute right-4 top-1/2 -translate-y-1/2 text-emerald-400" />
+                    ) : (
+                      <AlertCircle size={16} className="absolute right-4 top-1/2 -translate-y-1/2 text-rose-400" />
+                    )
+                  )}
                 </div>
               </motion.div>
 
@@ -577,9 +858,16 @@ export default function Login({ initialMode }) {
                     required
                     value={regEmail}
                     onChange={(e) => setRegEmail(e.target.value)}
-                    className="w-full bg-white/5 border border-white/10 rounded-full pl-11 pr-6 py-3.5 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-secondary/40 focus:border-transparent transition-all duration-300 text-sm focus:bg-white/10"
+                    className="w-full bg-white/5 border border-white/10 rounded-full pl-11 pr-10 py-3.5 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-secondary/40 focus:border-transparent transition-all duration-300 text-sm focus:bg-white/10 input-glow"
                     placeholder="Email Address"
                   />
+                  {regEmail && (
+                    isValidEmail(regEmail) ? (
+                      <Check size={16} className="absolute right-4 top-1/2 -translate-y-1/2 text-emerald-400" />
+                    ) : (
+                      <AlertCircle size={16} className="absolute right-4 top-1/2 -translate-y-1/2 text-rose-400" />
+                    )
+                  )}
                 </div>
               </motion.div>
 
@@ -593,7 +881,7 @@ export default function Login({ initialMode }) {
                     required
                     value={regPassword}
                     onChange={(e) => setRegPassword(e.target.value)}
-                    className="w-full bg-white/5 border border-white/10 rounded-full pl-11 pr-12 py-3.5 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-secondary/40 focus:border-transparent transition-all duration-300 text-sm focus:bg-white/10"
+                    className="w-full bg-white/5 border border-white/10 rounded-full pl-11 pr-12 py-3.5 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-secondary/40 focus:border-transparent transition-all duration-300 text-sm focus:bg-white/10 input-glow"
                     placeholder="Password"
                     minLength={8}
                   />
@@ -606,6 +894,44 @@ export default function Login({ initialMode }) {
                     {showRegPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                   </button>
                 </div>
+                
+                {/* Real-time Password Strength Meter */}
+                {regPassword && (
+                  <div className="space-y-1.5 px-1.5 pt-1.5 animate-in fade-in duration-300">
+                    <div className="flex justify-between items-center text-[10px] font-semibold">
+                      <span className="text-gray-400">Password Strength:</span>
+                      <span className={`${getPasswordStrength(regPassword).text} font-bold transition-all duration-300`}>
+                        {getPasswordStrength(regPassword).label}
+                      </span>
+                    </div>
+                    {/* Progress Bar */}
+                    <div className="w-full bg-white/10 h-1.5 rounded-full overflow-hidden">
+                      <div 
+                        className={`strength-bar h-full ${getPasswordStrength(regPassword).color}`} 
+                        style={{ width: `${(getPasswordStrength(regPassword).score / 4) * 100}%` }}
+                      ></div>
+                    </div>
+                    {/* Validation Checklist */}
+                    <div className="grid grid-cols-2 gap-x-3 gap-y-1 pt-1.5 text-[9px] font-medium text-gray-500">
+                      <div className="flex items-center space-x-1">
+                        <span className={`w-1.5 h-1.5 rounded-full transition-colors ${regPassword.length >= 8 ? 'bg-emerald-400 shadow-sm shadow-emerald-400/50' : 'bg-gray-600'}`}></span>
+                        <span>8+ Characters</span>
+                      </div>
+                      <div className="flex items-center space-x-1">
+                        <span className={`w-1.5 h-1.5 rounded-full transition-colors ${(/[A-Z]/.test(regPassword) && /[a-z]/.test(regPassword)) ? 'bg-emerald-400 shadow-sm shadow-emerald-400/50' : 'bg-gray-600'}`}></span>
+                        <span>Mixed Case</span>
+                      </div>
+                      <div className="flex items-center space-x-1">
+                        <span className={`w-1.5 h-1.5 rounded-full transition-colors ${/[0-9]/.test(regPassword) ? 'bg-emerald-400 shadow-sm shadow-emerald-400/50' : 'bg-gray-600'}`}></span>
+                        <span>Numbers</span>
+                      </div>
+                      <div className="flex items-center space-x-1">
+                        <span className={`w-1.5 h-1.5 rounded-full transition-colors ${/[^A-Za-z0-9]/.test(regPassword) ? 'bg-emerald-400 shadow-sm shadow-emerald-400/50' : 'bg-gray-600'}`}></span>
+                        <span>Special Symbols</span>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </motion.div>
 
               <motion.div variants={itemVariants}>
@@ -622,6 +948,34 @@ export default function Login({ initialMode }) {
                       <ArrowRight size={16} />
                     </span>
                   )}
+                </button>
+              </motion.div>
+
+              <motion.div variants={itemVariants} className="relative flex items-center justify-center my-5">
+                <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-white/10"></div></div>
+                <span className="relative bg-[#0d0a15] px-3 text-[10px] text-gray-500 font-bold uppercase tracking-wider">Or continue with</span>
+              </motion.div>
+
+              <motion.div variants={itemVariants} className="grid grid-cols-2 gap-3">
+                <button
+                  type="button"
+                  onClick={() => handleSocialLogin('google')}
+                  className="flex items-center justify-center space-x-2 py-2.5 px-4 bg-white/5 hover:bg-white/10 border border-white/10 rounded-full text-xs font-bold text-gray-200 hover:text-white transition-all duration-300 hover:scale-[1.02] active:scale-[0.98]"
+                >
+                  <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M12.24 10.285V14.4h6.887c-.648 2.41-2.519 4.2-5.136 4.2A5.714 5.714 0 018.25 12.9a5.714 5.714 0 015.741-5.7 5.617 5.617 0 013.9 1.545l3.07-3.07A10 10 0 1013.99 2 9.99 9.99 0 0024 12c0 .64-.07 1.3-.2 1.9H12.24z"/>
+                  </svg>
+                  <span>Google</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleSocialLogin('github')}
+                  className="flex items-center justify-center space-x-2 py-2.5 px-4 bg-white/5 hover:bg-white/10 border border-white/10 rounded-full text-xs font-bold text-gray-200 hover:text-white transition-all duration-300 hover:scale-[1.02] active:scale-[0.98]"
+                >
+                  <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
+                    <path fillRule="evenodd" clipRule="evenodd" d="M12 2C6.477 2 2 6.477 2 12c0 4.42 2.865 8.17 6.839 9.49.5.092.682-.217.682-.482 0-.237-.008-.866-.013-1.7-2.782.603-3.369-1.34-3.369-1.34-.454-1.156-1.11-1.464-1.11-1.464-.908-.62.069-.608.069-.608 1.003.07 1.531 1.03 1.531 1.03.892 1.529 2.341 1.087 2.91.831.092-.646.35-1.086.636-1.336-2.22-.253-4.555-1.11-4.555-4.943 0-1.091.39-1.984 1.029-2.683-.103-.253-.446-1.27.098-2.647 0 0 .84-.269 2.75 1.025A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.294 2.747-1.025 2.747-1.025.546 1.377.203 2.394.1 2.647.64.699 1.028 1.592 1.028 2.683 0 3.842-2.339 4.687-4.566 4.935.359.309.678.919.678 1.852 0 1.336-.012 2.415-.012 2.743 0 .267.18.579.688.481C19.138 20.167 22 16.418 22 12c0-5.523-4.477-10-10-10z"/>
+                  </svg>
+                  <span>GitHub</span>
                 </button>
               </motion.div>
             </form>
@@ -775,6 +1129,75 @@ export default function Login({ initialMode }) {
           </motion.div>
         </div>
       )}
+
+      {/* Advanced Voice Assistant concentric overlay */}
+      <AnimatePresence>
+        {isListening && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 bg-[#07050f]/85 backdrop-blur-md flex flex-col items-center justify-center p-6 text-center"
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              transition={{ type: 'spring', damping: 20 }}
+              className="max-w-md w-full glass-panel p-8 border border-white/10 flex flex-col items-center shadow-2xl relative"
+            >
+              <button
+                type="button"
+                onClick={() => {
+                  if (recognitionRef.current) {
+                    try {
+                      recognitionRef.current.abort();
+                    } catch(e) {}
+                  }
+                  setIsListening(false);
+                }}
+                className="absolute top-4 right-4 text-gray-400 hover:text-white transition-colors text-sm font-semibold bg-white/5 hover:bg-white/10 w-8 h-8 rounded-full flex items-center justify-center border border-white/10"
+              >
+                ✕
+              </button>
+
+              <div className="relative mb-8 mt-2 flex items-center justify-center">
+                {/* Ripples from index.css */}
+                <div className="absolute w-24 h-24 rounded-full bg-secondary/10 border border-secondary/20 animate-ripple"></div>
+                <div className="absolute w-24 h-24 rounded-full bg-secondary/20 border border-secondary/30 animate-ripple" style={{ animationDelay: '0.6s' }}></div>
+                <div className="absolute w-24 h-24 rounded-full bg-secondary/5 border border-secondary/10 animate-ripple" style={{ animationDelay: '1.2s' }}></div>
+                
+                <div className="w-16 h-16 rounded-full bg-gradient-to-tr from-secondary to-[#db2777] flex items-center justify-center text-white relative z-10 shadow-lg shadow-pink-500/35">
+                  <Mic size={24} className="animate-bounce" />
+                </div>
+              </div>
+
+              <h3 className="text-xl font-black text-white tracking-tight">Voice Command Assistant</h3>
+              <p className="text-xs text-secondary mt-1 font-mono tracking-wider font-extrabold uppercase animate-pulse">
+                Neural Assistant Listening
+              </p>
+              
+              <div className="mt-4 p-4 w-full bg-black/35 rounded-2xl border border-white/5 min-h-[50px] flex items-center justify-center">
+                <p className="text-sm font-medium text-white transition-all duration-300">
+                  {voiceCommandMessage || "Listening for speech..."}
+                </p>
+              </div>
+
+              <div className="mt-6 w-full text-left text-[11px] font-medium text-gray-400 bg-white/5 p-4 rounded-2xl border border-white/5 space-y-1.5">
+                <p className="font-bold text-gray-300 uppercase tracking-widest text-[9px] mb-1">Supported Commands:</p>
+                <div className="grid grid-cols-2 gap-x-3 gap-y-1 font-mono">
+                  <div className="text-gray-400 hover:text-white transition-colors">🎙️ "sign up" / "register"</div>
+                  <div className="text-gray-400 hover:text-white transition-colors">🎙️ "sign in" / "login"</div>
+                  <div className="text-gray-400 hover:text-white transition-colors">🎙️ "forgot password"</div>
+                  <div className="text-gray-400 hover:text-white transition-colors">🎙️ "admin"</div>
+                </div>
+                <p className="text-[10px] text-gray-500 italic pt-1 mt-1 border-t border-white/5 text-center">Say "help" to list instructions aloud</p>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
+
   );
 }

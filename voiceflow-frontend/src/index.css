@@ -211,5 +211,44 @@
   animation: shimmer 2.5s infinite;
 }
 
+/* Custom Password Strength & Input Glow Transitions */
+.strength-bar {
+  transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.4s ease;
+}
 
+.input-glow {
+  transition: all 0.3s ease;
+}
+.input-glow:focus {
+  box-shadow: 0 0 16px rgba(168, 85, 247, 0.25);
+  border-color: rgba(168, 85, 247, 0.45);
+}
 
+/* Voice Assistant Ripple Effect */
+@keyframes ripple {
+  0% {
+    transform: scale(0.85);
+    opacity: 0.6;
+  }
+  100% {
+    transform: scale(2.2);
+    opacity: 0;
+  }
+}
+
+.animate-ripple {
+  animation: ripple 2s cubic-bezier(0.16, 1, 0.3, 1) infinite;
+}
+
+/* Dynamic speaking soundwave animation */
+@keyframes wave-active {
+  0%, 100% { transform: scaleY(0.2); }
+  25% { transform: scaleY(1.2); }
+  50% { transform: scaleY(0.4); }
+  75% { transform: scaleY(1.4); }
+}
+
+.animate-wave-active {
+  animation: wave-active 0.55s ease-in-out infinite;
+  transform-origin: bottom;
+}
