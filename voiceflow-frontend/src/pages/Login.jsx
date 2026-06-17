@@ -18,7 +18,6 @@ export default function Login({ initialMode }) {
   const [email, setEmail] = useState(() => localStorage.getItem('remembered_voiceflow_email') || '');
   const [rememberMe, setRememberMe] = useState(() => !!localStorage.getItem('remembered_voiceflow_email'));
 
-  // Synchronize state with route or initial prop and reset preview / speech
   useEffect(() => {
     const isRegister = location.pathname === '/register' || initialMode === 'register';
     setIsLogin(!isRegister);
@@ -29,6 +28,10 @@ export default function Login({ initialMode }) {
     }
     setIsPlayingPreview(false);
     setIsListening(false);
+    
+    // Clear password fields on route transition
+    setPassword('');
+    setRegPassword('');
   }, [location.pathname, initialMode]);
 
   const toggleMode = () => {
