@@ -18,6 +18,7 @@ export default function History() {
   const [loading, setLoading] = useState(true);
   const [expandedIds, setExpandedIds] = useState([]);
   const [copiedId, setCopiedId] = useState(null);
+  const [selectedIds, setSelectedIds] = useState([]);
 
   // Filters State
   const [filterLanguage, setFilterLanguage] = useState('all');
@@ -31,6 +32,7 @@ export default function History() {
   const [duration, setDuration] = useState(0);
   const [volume, setVolume] = useState(1.0);
   const [isMuted, setIsMuted] = useState(false);
+  const [playbackSpeed, setPlaybackSpeed] = useState(1.0);
 
   const audioRef = useRef(null);
 
@@ -96,6 +98,7 @@ export default function History() {
     const audio = new Audio(fullUrl);
     audioRef.current = audio;
     audio.volume = isMuted ? 0 : volume;
+    audio.playbackRate = playbackSpeed;
     
     setCurrentTrack(item);
     setIsPlaying(true);
@@ -223,6 +226,11 @@ export default function History() {
       return 0;
     });
 
+  const totalClips = processedData.length;
+  const totalChars = processedData.reduce((acc, item) => acc + (item.char_count || 0), 0);
+  const totalDuration = processedData.reduce((acc, item) => acc + (item.duration || 0), 0);
+  const avgClipSize = totalClips ? Math.round(totalChars / totalClips) : 0;
+
   return (
     <div className="space-y-6 pb-28">
       {/* Header and Search */}
@@ -244,6 +252,30 @@ export default function History() {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
+        </div>
+      </div>
+
+      {/* Summary Metrics Panel */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="glow-card p-5 border border-white/5 flex flex-col justify-between items-center text-center">
+          <span className="text-[10px] text-gray-500 uppercase tracking-widest font-bold font-mono">Clips Generated</span>
+          <span className="text-2xl font-black text-white font-mono mt-1">{totalClips}</span>
+          <span className="text-[10px] text-primary font-semibold mt-1">Total Audio Tracks</span>
+        </div>
+        <div className="glow-card p-5 border border-white/5 flex flex-col justify-between items-center text-center">
+          <span className="text-[10px] text-gray-500 uppercase tracking-widest font-bold font-mono">Chars Processed</span>
+          <span className="text-2xl font-black text-white font-mono mt-1">{totalChars.toLocaleString()}</span>
+          <span className="text-[10px] text-secondary font-semibold mt-1">Total Synthesized Chars</span>
+        </div>
+        <div className="glow-card p-5 border border-white/5 flex flex-col justify-between items-center text-center">
+          <span className="text-[10px] text-gray-500 uppercase tracking-widest font-bold font-mono">Total Duration</span>
+          <span className="text-2xl font-black text-white font-mono mt-1">{formatDuration(totalDuration)}</span>
+          <span className="text-[10px] text-blue-400 font-semibold mt-1">Hours/Mins of Audio</span>
+        </div>
+        <div className="glow-card p-5 border border-white/5 flex flex-col justify-between items-center text-center">
+          <span className="text-[10px] text-gray-500 uppercase tracking-widest font-bold font-mono">Average Clip Size</span>
+          <span className="text-2xl font-black text-white font-mono mt-1">{avgClipSize.toLocaleString()}</span>
+          <span className="text-[10px] text-green-400 font-semibold mt-1">Avg Chars per Request</span>
         </div>
       </div>
 
@@ -323,6 +355,20 @@ export default function History() {
             <table className="w-full text-left border-collapse">
               <thead>
                 <tr className="bg-white/3 text-gray-400 text-xs font-semibold uppercase tracking-wider border-b border-white/5">
+                  <th className="p-4 w-10 text-center">
+                    <input
+                      type="checkbox"
+                      checked={processedData.length > 0 && selectedIds.length === processedData.length}
+                      onChange={(e) => {
+                        if (e.target.checked) {
+                          setSelectedIds(processedData.map(item => item.id));
+                        } else {
+                          setSelectedIds([]);
+                        }
+                      }}
+                      className="accent-primary rounded bg-black/40 border border-white/10 w-4 h-4 cursor-pointer"
+                    />
+                  </th>
                   <th className="p-4 font-semibold w-12"></th>
                   <th className="p-4 font-semibold">Title / Text Contents</th>
                   <th className="p-4 font-semibold hidden md:table-cell">Speech Settings</th>
@@ -339,8 +385,26 @@ export default function History() {
                       <tr 
                         key={item.id} 
                         onClick={(e) => toggleExpandRow(item.id, e)}
-                        className={`hover:bg-white/3 transition-colors cursor-pointer group select-none ${isExpanded ? 'bg-white/3 border-b-transparent' : ''}`}
+                        className={`hover:bg-white/3 transition-colors cursor-pointer group select-none ${
+                          selectedIds.includes(item.id) ? 'bg-primary/5 hover:bg-primary/10' : ''
+                        } ${isExpanded ? 'bg-white/3 border-b-transparent' : ''}`}
                       >
+                        {/* Checkbox cell */}
+                        <td className="p-4 text-center" onClick={(e) => e.stopPropagation()}>
+                          <input
+                            type="checkbox"
+                            checked={selectedIds.includes(item.id)}
+                            onChange={() => {
+                              setSelectedIds(prev => 
+                                prev.includes(item.id) 
+                                  ? prev.filter(x => x !== item.id) 
+                                  : [...prev, item.id]
+                              );
+                            }}
+                            className="accent-primary rounded bg-black/40 border border-white/10 w-4 h-4 cursor-pointer"
+                          />
+                        </td>
+
                         {/* Play button cell */}
                         <td className="p-4">
                           <button
@@ -466,7 +530,7 @@ export default function History() {
                       <AnimatePresence initial={false}>
                         {isExpanded && (
                           <tr className="bg-white/1 border-b border-white/5">
-                            <td colSpan={5} className="p-0">
+                            <td colSpan={6} className="p-0">
                               <motion.div
                                 initial={{ height: 0, opacity: 0 }}
                                 animate={{ height: 'auto', opacity: 1 }}
@@ -547,6 +611,90 @@ export default function History() {
           </div>
         )}
       </div>
+
+      {/* Floating Bulk Actions Bar */}
+      <AnimatePresence>
+        {selectedIds.length > 0 && (
+          <motion.div
+            initial={{ y: 80, opacity: 0, x: '-50%' }}
+            animate={{ y: 0, opacity: 1, x: '-50%' }}
+            exit={{ y: 80, opacity: 0, x: '-50%' }}
+            className="fixed bottom-6 left-[50%] bg-[#121218] border border-primary/30 rounded-full px-6 py-3.5 shadow-[0_20px_50px_rgba(99,102,241,0.25)] flex items-center gap-6 z-50 text-sm font-semibold select-none min-w-[320px] sm:min-w-[420px]"
+          >
+            <div className="flex items-center gap-2">
+              <span className="w-5 h-5 rounded-full bg-primary text-white text-xs flex items-center justify-center font-bold font-mono">
+                {selectedIds.length}
+              </span>
+              <span className="text-gray-400">Selected</span>
+            </div>
+            
+            <div className="w-px h-6 bg-white/10"></div>
+            
+            <div className="flex items-center gap-3">
+              {/* Bulk Download */}
+              <button
+                onClick={() => {
+                  toast.success(`Starting download of ${selectedIds.length} audio files...`);
+                  selectedIds.forEach((id, idx) => {
+                    const item = historyData.find(x => x.id === id);
+                    if (item && item.audio_url) {
+                      setTimeout(() => {
+                        const link = document.createElement('a');
+                        link.href = `${BASE_URL}${item.audio_url}`;
+                        link.setAttribute('download', `voiceflow_${item.id}.mp3`);
+                        document.body.appendChild(link);
+                        link.click();
+                        document.body.removeChild(link);
+                      }, idx * 400);
+                    }
+                  });
+                }}
+                className="flex items-center gap-1.5 text-xs text-gray-300 hover:text-white bg-white/5 border border-white/10 px-3 py-1.5 rounded-full hover:bg-white/10 transition-colors"
+              >
+                <Download size={14} />
+                <span className="hidden sm:inline">Download Selected</span>
+                <span className="sm:hidden">Download</span>
+              </button>
+
+              {/* Bulk Delete */}
+              <button
+                onClick={async () => {
+                  if (!confirm(`Are you sure you want to delete the ${selectedIds.length} selected entries?`)) return;
+                  try {
+                    await historyApi.bulkDelete(selectedIds);
+                    toast.success('Selected entries deleted.');
+                    setHistoryData(prev => prev.filter(item => !selectedIds.includes(item.id)));
+                    setSelectedIds([]);
+                    if (currentTrack && selectedIds.includes(currentTrack.id)) {
+                      if (audioRef.current) {
+                        audioRef.current.pause();
+                        audioRef.current = null;
+                      }
+                      setCurrentTrack(null);
+                      setIsPlaying(false);
+                    }
+                  } catch (err) {
+                    toast.error('Bulk deletion failed.');
+                  }
+                }}
+                className="flex items-center gap-1.5 text-xs text-red-400 hover:text-white bg-red-500/10 border border-red-500/20 px-3 py-1.5 rounded-full hover:bg-red-500 hover:border-transparent transition-colors"
+              >
+                <Trash2 size={14} />
+                <span className="hidden sm:inline">Delete Selected</span>
+                <span className="sm:hidden">Delete</span>
+              </button>
+
+              {/* Deselect All */}
+              <button
+                onClick={() => setSelectedIds([])}
+                className="text-xs text-gray-500 hover:text-gray-300 px-2.5 py-1.5 transition-colors ml-1"
+              >
+                Cancel
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Global Persistent Bottom Audio Player */}
       <AnimatePresence>
@@ -638,6 +786,29 @@ export default function History() {
                     }}
                     className="w-16 sm:w-20 accent-primary bg-white/10 h-1 rounded appearance-none cursor-pointer"
                   />
+                </div>
+
+                {/* Playback speed selector */}
+                <div className="flex items-center">
+                  <select
+                    value={playbackSpeed}
+                    onChange={(e) => {
+                      const speed = parseFloat(e.target.value);
+                      setPlaybackSpeed(speed);
+                      if (audioRef.current) {
+                        audioRef.current.playbackRate = speed;
+                      }
+                    }}
+                    className="bg-black/50 border border-white/10 rounded px-1.5 py-0.5 text-[9px] text-white focus:outline-none focus:ring-1 focus:ring-primary cursor-pointer font-bold font-mono"
+                    title="Playback Speed"
+                  >
+                    <option value="0.5">0.5x</option>
+                    <option value="0.8">0.8x</option>
+                    <option value="1.0">1.0x</option>
+                    <option value="1.2">1.2x</option>
+                    <option value="1.5">1.5x</option>
+                    <option value="2.0">2.0x</option>
+                  </select>
                 </div>
 
                 {/* Separator */}

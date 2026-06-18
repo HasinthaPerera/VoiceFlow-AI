@@ -92,6 +92,12 @@ export const historyApi = {
 
   delete: (id) =>
     request(`/api/history/${id}`, { method: 'DELETE' }),
+
+  bulkDelete: (ids) =>
+    request('/api/history/bulk-delete', {
+      method: 'POST',
+      body: JSON.stringify({ ids }),
+    }),
 };
 
 // ─── User API ─────────────────────────────────────────────────────────────────

@@ -1,12 +1,17 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from typing import List, Optional
+from pydantic import BaseModel
 
 from database import get_db, User, GenerationHistory
 from auth import get_current_user
 from tts_service import delete_audio_file
 
 router = APIRouter(prefix="/api/history", tags=["History"])
+
+
+class BulkDeleteRequest(BaseModel):
+    ids: List[int]
 
 
 # ─── Routes ───────────────────────────────────────────────────────────────────
@@ -76,3 +81,27 @@ def delete_history_item(
     db.delete(item)
     db.commit()
     return {"message": "Deleted successfully."}
+
+
+@router.post("/bulk-delete")
+def bulk_delete_history_items(
+    payload: BulkDeleteRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Delete multiple generation entries and files in bulk."""
+    items = db.query(GenerationHistory).filter(
+        GenerationHistory.id.in_(payload.ids),
+        GenerationHistory.user_id == current_user.id,
+    ).all()
+
+    deleted_count = 0
+    for item in items:
+        if item.audio_filename:
+            delete_audio_file(item.audio_filename)
+        db.delete(item)
+        deleted_count += 1
+
+    db.commit()
+    return {"message": f"Successfully deleted {deleted_count} entries.", "deleted_count": deleted_count}
+
