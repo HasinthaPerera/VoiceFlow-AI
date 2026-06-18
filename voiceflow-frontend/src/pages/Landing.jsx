@@ -8,6 +8,8 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
 import { getUser, ttsApi } from '../api';
+import InteractiveParticleBackground from '../components/InteractiveParticleBackground';
+import VoiceSphereVisualizer from '../components/VoiceSphereVisualizer';
 
 export default function Landing() {
   // SEO Page Title
@@ -19,6 +21,15 @@ export default function Landing() {
   const [user, setUser] = useState(null);
   useEffect(() => {
     setUser(getUser());
+  }, []);
+
+  // --- Live Stats Ticker State ---
+  const [liveChars, setLiveChars] = useState(15248109);
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setLiveChars(prev => prev + Math.floor(Math.random() * 95) + 30);
+    }, 1800);
+    return () => clearInterval(timer);
   }, []);
 
   // --- Interactive Playground State ---
@@ -424,6 +435,7 @@ export default function Landing() {
   // --- Pricing State ---
   const [billingPeriod, setBillingPeriod] = useState('monthly');
   const [priceSliderVal, setPriceSliderVal] = useState(2); // default to 250k chars (Pro)
+  const [showCompareTable, setShowCompareTable] = useState(false);
 
   // --- FAQ State & Search ---
   const [expandedFaq, setExpandedFaq] = useState(null);
@@ -443,6 +455,7 @@ export default function Landing() {
 
   return (
     <div className="flex-1 flex flex-col items-center bg-grid-pattern relative">
+      <InteractiveParticleBackground />
       {/* Hidden HTML5 Audio Element for Cloud Preview */}
       <audio 
         ref={audioRef}
@@ -693,17 +706,13 @@ export default function Landing() {
                 </div>
               </div>
 
-              {/* Animated visualizer bars */}
-              <div className="flex items-end gap-1 h-6">
-                {[1, 2, 3, 4, 5, 6, 7].map((num) => (
-                  <div 
-                    key={num}
-                    className={`w-0.75 sm:w-1 bg-gradient-to-t from-primary to-secondary rounded-full ${
-                      isHeroPlaying ? 'animate-wave-bar' : 'opacity-40'
-                    } wave-height-${num}`}
-                    style={{ animationDelay: `${num * 0.12}s` }}
-                  ></div>
-                ))}
+              {/* Voice Sphere Visualizer (Mini version for Hero Mockup) */}
+              <div className="w-16 h-16 overflow-hidden flex items-center justify-center">
+                <VoiceSphereVisualizer 
+                  isPlaying={isHeroPlaying} 
+                  speed={heroSpeed} 
+                  pitch={heroPitch} 
+                />
               </div>
             </div>
           </motion.div>
@@ -731,6 +740,68 @@ export default function Landing() {
           <span>🌐 GlobalReach Translate</span>
         </div>
       </div>
+
+      {/* Live Platform Stats */}
+      <section className="max-w-6xl mx-auto w-full px-4 py-8 mb-12 relative z-10">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+          <motion.div 
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="glow-card p-6 border border-white/5 flex flex-col justify-between items-center text-center relative overflow-hidden"
+          >
+            <div className="absolute top-0 left-0 w-2 h-2 bg-green-500 rounded-full m-3 animate-ping"></div>
+            <div className="absolute top-0 left-0 w-2 h-2 bg-green-500 rounded-full m-3"></div>
+            <span className="text-[10px] text-gray-500 uppercase tracking-widest font-bold font-mono">Live Synthesizing</span>
+            <div className="text-xl sm:text-2xl font-black text-white font-mono mt-2 select-none">
+              {liveChars.toLocaleString()}
+            </div>
+            <span className="text-[10px] text-primary font-semibold mt-1">Total Chars Synthesized</span>
+          </motion.div>
+
+          <motion.div 
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ delay: 0.1 }}
+            className="glow-card p-6 border border-white/5 flex flex-col justify-between items-center text-center"
+          >
+            <Zap size={20} className="text-yellow-500" />
+            <div className="text-xl sm:text-2xl font-black text-white font-mono mt-2">
+              &lt; 145ms
+            </div>
+            <span className="text-[10px] text-secondary font-semibold mt-1">Average Response Latency</span>
+          </motion.div>
+
+          <motion.div 
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ delay: 0.2 }}
+            className="glow-card p-6 border border-white/5 flex flex-col justify-between items-center text-center"
+          >
+            <Languages size={20} className="text-blue-400" />
+            <div className="text-xl sm:text-2xl font-black text-white font-mono mt-2">
+              4 Major
+            </div>
+            <span className="text-[10px] text-blue-400 font-semibold mt-1">Native Accent Engines</span>
+          </motion.div>
+
+          <motion.div 
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ delay: 0.3 }}
+            className="glow-card p-6 border border-white/5 flex flex-col justify-between items-center text-center"
+          >
+            <Check size={20} className="text-green-400" />
+            <div className="text-xl sm:text-2xl font-black text-white font-mono mt-2">
+              99.99%
+            </div>
+            <span className="text-[10px] text-green-400 font-semibold mt-1">Uptime SLA Guarantee</span>
+          </motion.div>
+        </div>
+      </section>
 
       {/* Interactive Try-it-now Playground Widget */}
       <section id="playground" className="max-w-4xl mx-auto w-full px-4 py-16 scroll-mt-20">
@@ -912,15 +983,25 @@ export default function Landing() {
           </div>
 
           {/* Soundwave Canvas Visualizer strip */}
-          <div className="mt-6 pt-4 border-t border-white/5 flex items-center gap-4">
-            <span className="text-xs text-gray-500 font-medium">Output:</span>
-            <div className="flex-1 h-12 bg-black/20 rounded-lg overflow-hidden relative border border-white/5">
+          <div className="mt-6 pt-4 border-t border-white/5 flex flex-col sm:flex-row items-center gap-6">
+            <div className="flex items-center gap-3 w-full sm:w-auto">
+              <span className="text-xs text-gray-500 font-medium">Output:</span>
+              <div className="w-12 h-12 bg-black/40 rounded-full border border-white/10 overflow-hidden flex items-center justify-center shrink-0">
+                <VoiceSphereVisualizer 
+                  isPlaying={isDemoPlaying} 
+                  analyserRef={analyserRef} 
+                  speed={demoSpeed} 
+                  pitch={demoPitch} 
+                />
+              </div>
+            </div>
+            <div className="flex-1 h-12 bg-black/20 rounded-lg overflow-hidden relative border border-white/5 w-full">
               {isDemoPlaying && isCloudMode && (
                 <div className="absolute inset-0 bg-primary/5 animate-pulse pointer-events-none"></div>
               )}
               <canvas ref={canvasRef} className="w-full h-full block" />
             </div>
-            <Volume2 size={16} className={isDemoPlaying ? 'text-primary animate-bounce' : 'text-gray-600'} />
+            <Volume2 size={16} className={isDemoPlaying ? 'text-primary animate-bounce shrink-0' : 'text-gray-600 shrink-0'} />
           </div>
         </motion.div>
       </section>
@@ -1149,21 +1230,47 @@ export default function Landing() {
 
                 <p className="text-sm text-gray-400 leading-relaxed mb-4">{voice.desc}</p>
 
-                {/* Simulated Waveform Visualizer on Voice Cards */}
-                {playingVoiceId === voice.id && (
-                  <div className="h-5 flex items-end gap-1 bg-black/25 rounded p-1.5 border border-white/5">
-                    {[...Array(16)].map((_, i) => (
-                      <div
-                        key={i}
-                        className="w-1 bg-primary rounded-full animate-wave-bar flex-1"
-                        style={{ 
-                          height: `${30 + Math.sin(i * 1.5) * 60}%`, 
-                          animationDelay: `${i * 0.08}s` 
-                        }}
-                      />
-                    ))}
+                {/* Audio Card Footer / Simulated Waveform & Progress */}
+                <div className="space-y-3 mt-4">
+                  {playingVoiceId === voice.id && (
+                    <div className="space-y-2">
+                      {/* Waveform */}
+                      <div className="h-6 flex items-end gap-1.5 bg-black/45 rounded-lg p-2 border border-white/5 overflow-hidden">
+                        {[...Array(24)].map((_, i) => (
+                          <div
+                            key={i}
+                            className="w-1 bg-gradient-to-t from-primary to-secondary rounded-full animate-wave-bar flex-1"
+                            style={{ 
+                              height: `${20 + Math.sin(i * 1.8) * 80}%`, 
+                              animationDelay: `${i * 0.05}s` 
+                            }}
+                          />
+                        ))}
+                      </div>
+                      {/* Progress Bar scrubber simulation */}
+                      <div className="flex items-center justify-between text-[10px] text-gray-500 font-mono">
+                        <span>0:04</span>
+                        <div className="flex-1 mx-3 h-1 bg-white/10 rounded relative overflow-hidden">
+                          <div className="absolute top-0 left-0 h-full w-[45%] bg-primary rounded animate-pulse"></div>
+                        </div>
+                        <span>0:12</span>
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="flex items-center justify-between pt-2 border-t border-white/5">
+                    <span className="text-[10px] text-gray-500 font-mono">Sample Rate: 48kHz</span>
+                    <button 
+                      onClick={() => {
+                        toast.success(`Downloading ${voice.name}'s voice template sample...`);
+                      }}
+                      className="text-[10px] bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white px-2 py-1 rounded border border-white/10 flex items-center gap-1 font-semibold transition-all"
+                    >
+                      <Download size={10} />
+                      <span>Download Sample</span>
+                    </button>
                   </div>
-                )}
+                </div>
               </motion.div>
             ))}
           </AnimatePresence>
@@ -1802,6 +1909,93 @@ export default function Landing() {
             </Link>
           </div>
         </div>
+
+        {/* Toggle Detailed Comparison */}
+        <div className="text-center mt-12">
+          <button
+            onClick={() => setShowCompareTable(!showCompareTable)}
+            className="btn-secondary text-sm font-semibold inline-flex items-center space-x-2 px-6 py-3 hover:border-primary/50 transition-all duration-300"
+          >
+            <span>{showCompareTable ? "Hide Detailed Comparison" : "Compare All Features"}</span>
+            <ChevronDown size={16} className={`transition-transform duration-300 ${showCompareTable ? 'rotate-180 text-primary' : ''}`} />
+          </button>
+        </div>
+
+        {/* Collapsible Comparison Table */}
+        <AnimatePresence>
+          {showCompareTable && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+              transition={{ duration: 0.3 }}
+              className="overflow-hidden mt-8 w-full"
+            >
+              <div className="glass-panel p-6 border border-white/5 overflow-x-auto w-full">
+                <table className="w-full text-left border-collapse text-sm min-w-[650px]">
+                  <thead>
+                    <tr className="border-b border-white/5 text-gray-500 font-bold uppercase tracking-wider text-xs">
+                      <th className="py-4 px-3">Feature</th>
+                      <th className="py-4 px-3">Free Starter</th>
+                      <th className="py-4 px-3 text-primary">Professional</th>
+                      <th className="py-4 px-3 text-secondary">Enterprise</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-white/5 text-gray-300 font-medium">
+                    <tr>
+                      <td className="py-4 px-3 font-semibold text-white">Monthly Character Limit</td>
+                      <td className="py-4 px-3">Up to 100k</td>
+                      <td className="py-4 px-3 text-white">250k - 1 Million</td>
+                      <td className="py-4 px-3 text-white font-bold">2.5 Million - 5M+</td>
+                    </tr>
+                    <tr>
+                      <td className="py-4 px-3 font-semibold text-white">Voice Selection</td>
+                      <td className="py-4 px-3">Standard Only</td>
+                      <td className="py-4 px-3">All Premium Neural</td>
+                      <td className="py-4 px-3">Custom Cloned & Premium</td>
+                    </tr>
+                    <tr>
+                      <td className="py-4 px-3 font-semibold text-white">Voice Cloning</td>
+                      <td className="py-4 px-3">❌ Not Supported</td>
+                      <td className="py-4 px-3">1 Custom Voice Profile</td>
+                      <td className="py-4 px-3">Unlimited Custom Clones</td>
+                    </tr>
+                    <tr>
+                      <td className="py-4 px-3 font-semibold text-white">Commercial Rights</td>
+                      <td className="py-4 px-3">❌ Personal Use Only</td>
+                      <td className="py-4 px-3">✓ Full Rights Included</td>
+                      <td className="py-4 px-3">✓ Full Rights Included</td>
+                    </tr>
+                    <tr>
+                      <td className="py-4 px-3 font-semibold text-white">API Access</td>
+                      <td className="py-4 px-3">❌ Unavailable</td>
+                      <td className="py-4 px-3">✓ Standard Rate Limit</td>
+                      <td className="py-4 px-3">✓ Dedicated High-Priority</td>
+                    </tr>
+                    <tr>
+                      <td className="py-4 px-3 font-semibold text-white">Export Quality</td>
+                      <td className="py-4 px-3">128kbps MP3</td>
+                      <td className="py-4 px-3">320kbps MP3 / WAV</td>
+                      <td className="py-4 px-3">Uncompressed Studio WAV</td>
+                    </tr>
+                    <tr>
+                      <td className="py-4 px-3 font-semibold text-white">Priority Queue</td>
+                      <td className="py-4 px-3">Standard</td>
+                      <td className="py-4 px-3">Fast (GPU Priority)</td>
+                      <td className="py-4 px-3">Instantaneous (Dedicated Node)</td>
+                    </tr>
+                    <tr>
+                      <td className="py-4 px-3 font-semibold text-white">Customer Support</td>
+                      <td className="py-4 px-3">Community Discord</td>
+                      <td className="py-4 px-3">24/7 Email</td>
+                      <td className="py-4 px-3">SLA / Phone Support / AM</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </section>
 
       {/* FAQ Accordion Section */}
