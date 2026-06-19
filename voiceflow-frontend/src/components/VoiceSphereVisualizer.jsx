@@ -100,10 +100,13 @@ export default function VoiceSphereVisualizer({ isPlaying, analyserRef, speed = 
         coreGradient.addColorStop(0.6, 'rgba(168, 85, 247, 0.05)');
         coreGradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
       }
-      ctx.beginPath();
-      ctx.arc(centerX, centerY, baseRadius * 1.5, 0, Math.PI * 2);
-      ctx.fillStyle = coreGradient;
-      ctx.fill();
+            const coreRadius = baseRadius * 1.5;
+      if (coreRadius > 0) {
+        ctx.beginPath();
+        ctx.arc(centerX, centerY, coreRadius, 0, Math.PI * 2);
+        ctx.fillStyle = coreGradient;
+        ctx.fill();
+      }
 
       // --- Draw Morphing Wave Rings (3 overlaying rings) ---
       const rings = [
@@ -154,21 +157,27 @@ export default function VoiceSphereVisualizer({ isPlaying, analyserRef, speed = 
       });
       ctx.shadowBlur = 0; // Reset shadow for next draw operations
 
-      // --- Draw Center Ring (Dotted/Tech-looking) ---
-      ctx.beginPath();
-      ctx.strokeStyle = 'rgba(255, 255, 255, 0.08)';
-      ctx.lineWidth = 1;
-      ctx.setLineDash([4, 6]);
-      ctx.arc(centerX, centerY, baseRadius - 25, 0, Math.PI * 2);
-      ctx.stroke();
-      ctx.setLineDash([]); // Reset dash
+            // --- Draw Center Ring (Dotted/Tech-looking) ---
+      const dottedRadius = baseRadius - 25;
+      if (dottedRadius > 0) {
+        ctx.beginPath();
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.08)';
+        ctx.lineWidth = 1;
+        ctx.setLineDash([4, 6]);
+        ctx.arc(centerX, centerY, dottedRadius, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.setLineDash([]); // Reset dash
+      }
 
       // Inner micro circle
-      ctx.beginPath();
-      ctx.strokeStyle = isPlaying ? 'rgba(168, 85, 247, 0.3)' : 'rgba(255, 255, 255, 0.05)';
-      ctx.lineWidth = 1.5;
-      ctx.arc(centerX, centerY, baseRadius * 0.45, 0, Math.PI * 2);
-      ctx.stroke();
+      const innerRadius = baseRadius * 0.45;
+      if (innerRadius > 0) {
+        ctx.beginPath();
+        ctx.strokeStyle = isPlaying ? 'rgba(168, 85, 247, 0.3)' : 'rgba(255, 255, 255, 0.05)';
+        ctx.lineWidth = 1.5;
+        ctx.arc(centerX, centerY, innerRadius, 0, Math.PI * 2);
+        ctx.stroke();
+      }
     };
 
     draw();
