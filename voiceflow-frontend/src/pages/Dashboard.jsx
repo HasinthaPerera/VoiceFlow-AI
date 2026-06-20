@@ -20,10 +20,17 @@ import {
   Terminal, 
   Volume2, 
   Zap, 
-  BarChart3 
+  BarChart3,
+  Download,
+  Search,
+  Server,
+  Sliders,
+  VolumeX,
+  Languages
 } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { userApi, historyApi, getUser, BASE_URL } from '../api';
+import { userApi, historyApi, getUser, BASE_URL, ttsApi } from '../api';
+import VoiceSphereVisualizer from '../components/VoiceSphereVisualizer';
 
 function AnimatedNumber({ value, isFloat = false }) {
   const [displayValue, setDisplayValue] = useState(0);
@@ -75,6 +82,28 @@ export default function Dashboard() {
   const [playSpeed, setPlaySpeed] = useState(1.0);
   const audioRef = useRef(null);
 
+  // Web Audio Context & Analyser
+  const audioContextRef = useRef(null);
+  const analyserRef = useRef(null);
+
+  // Sandbox TTS State
+  const [sandboxText, setSandboxText] = useState('');
+  const [sandboxVoice, setSandboxVoice] = useState('natural');
+  const [sandboxLang, setSandboxLang] = useState('english');
+  const [isSandboxGenerating, setIsSandboxGenerating] = useState(false);
+  const [isSandboxPlaying, setIsSandboxPlaying] = useState(false);
+  const [sandboxAudioUrl, setSandboxAudioUrl] = useState(null);
+  const sandboxAudioRef = useRef(null);
+
+  // Search & Filter Recent Activity State
+  const [recentSearch, setRecentSearch] = useState('');
+
+  // Custom Chart Style State
+  const [chartType, setChartType] = useState('line'); // 'line' or 'bar'
+
+  // Optimization Mode State
+  const [telemetryMode, setTelemetryMode] = useState('studio'); // 'eco', 'studio', 'quantum'
+
   // Chart Telemetry State
   const [activeMetric, setActiveMetric] = useState('characters');
   const [activeRange, setActiveRange] = useState('7d');
@@ -89,19 +118,31 @@ export default function Dashboard() {
 
   const user = getUser();
 
-  // Simulated live log templates
-  const logTemplates = [
-    "Checking pipeline health... OK",
-    "Memory compaction completed. Freed 1.4GB VRAM.",
-    "Synths scheduler queue status: 0 pending.",
-    "GPU Cluster auto-scale state: Nominal.",
-    "Cache lookup performance: 94.2% hits.",
-    "Synthesis model Sinhala Male v2 active in cache.",
-    "SLA threshold compliance: 100%.",
-    "Model compilation warmup: Complete.",
-    "Linguistic accent processing engine: Ready.",
-    "Clean audio output envelope adjusted successfully."
-  ];
+  // Simulated live log templates by mode
+  const logTemplates = {
+    eco: [
+      "Node-Alpha cooling fan speed decreased (Eco mode).",
+      "Power draw capped at 95W per GPU cluster.",
+      "VRAM allocation optimization: Compact mode active.",
+      "Pipeline latency standard (SLA standard).",
+      "Cache eviction interval increased to conserve memory."
+    ],
+    studio: [
+      "Checking pipeline health... OK",
+      "Memory compaction completed. Freed 1.4GB VRAM.",
+      "Synths scheduler queue status: 0 pending.",
+      "GPU Cluster auto-scale state: Nominal.",
+      "Cache lookup performance: 94.2% hits.",
+      "Synthesis model Sinhala Male v2 active in cache."
+    ],
+    quantum: [
+      "Multi-GPU pipeline scaling enabled: 4x RTX 4090.",
+      "VRAM parallel mapping synchronized: 96GB active.",
+      "Acoustic synthesis latency: 4.8ms.",
+      "Direct storage stream throughput: 1.2 GB/s.",
+      "CUDA cores temperature peak: 68C (Liquid cooled)."
+    ]
+  };
 
   // Initialize diagnostics logging
   useEffect(() => {
@@ -111,10 +152,14 @@ export default function Dashboard() {
       `[${new Date().toLocaleTimeString()}] SUCCESS: CUDA hardware connection stable.`
     ];
     setLogs(initialLogs);
+  }, []);
 
+  // Live log updating interval based on telemetryMode
+  useEffect(() => {
     const interval = setInterval(() => {
       const timestamp = new Date().toLocaleTimeString();
-      const newLog = `[${timestamp}] INFO: ${logTemplates[Math.floor(Math.random() * logTemplates.length)]}`;
+      const templates = logTemplates[telemetryMode] || logTemplates.studio;
+      const newLog = `[${timestamp}] INFO: ${templates[Math.floor(Math.random() * templates.length)]}`;
       setLogs(prev => {
         const next = [...prev, newLog];
         if (next.length > 15) next.shift(); // keep last 15 logs
@@ -123,7 +168,23 @@ export default function Dashboard() {
     }, 7000);
 
     return () => clearInterval(interval);
-  }, []);
+  }, [telemetryMode]);
+
+  // Handle telemetry mode logs injection
+  useEffect(() => {
+    let latency = 24;
+    if (telemetryMode === 'eco') latency = 45;
+    if (telemetryMode === 'quantum') latency = 8;
+    setPingTime(latency + Math.floor(Math.random() * 4));
+    
+    const timestamp = new Date().toLocaleTimeString();
+    setLogs(prev => [
+      ...prev,
+      `[${timestamp}] SYSTEM: Optimization profile switched to [${telemetryMode.toUpperCase()}].`,
+      `[${timestamp}] INFO: Re-routing speech vector pipelines...`,
+      `[${timestamp}] SUCCESS: Node clusters scaled successfully.`
+    ].slice(-15));
+  }, [telemetryMode]);
 
   // Scroll log console to bottom
   useEffect(() => {
@@ -152,17 +213,25 @@ export default function Dashboard() {
     load();
   }, []);
 
-  // GPU Load oscillation
+  // GPU Load oscillation based on telemetryMode
   useEffect(() => {
     const interval = setInterval(() => {
       setGpuLoad((prev) => {
-        const delta = Math.random() > 0.5 ? 2 : -2;
+        let baseMin = 22, baseMax = 48;
+        if (telemetryMode === 'eco') {
+          baseMin = 12;
+          baseMax = 28;
+        } else if (telemetryMode === 'quantum') {
+          baseMin = 75;
+          baseMax = 95;
+        }
+        const delta = Math.random() > 0.5 ? 3 : -3;
         const next = prev + delta;
-        return next > 48 ? 48 : next < 22 ? 22 : next;
+        return next > baseMax ? baseMax : next < baseMin ? baseMin : next;
       });
-    }, 4000);
+    }, 3000);
     return () => clearInterval(interval);
-  }, []);
+  }, [telemetryMode]);
 
   const insights = [
     "Tip: Adjust speed to 1.1x for a more natural, fast-paced educational narration.",
@@ -218,7 +287,7 @@ export default function Dashboard() {
     setPinging(false);
   };
 
-  // Upgraded Audio Player logic
+  // Upgraded Audio Player logic with Web Audio API bindings
   const handlePlayActivity = (item) => {
     if (!item.audio_url) return;
     const fullUrl = `${BASE_URL}${item.audio_url}`;
@@ -237,6 +306,7 @@ export default function Dashboard() {
       }
       
       const audio = new Audio(fullUrl);
+      audio.crossOrigin = "anonymous";
       audio.playbackRate = playSpeed;
       audioRef.current = audio;
       setPlayingId(item.id);
@@ -255,6 +325,25 @@ export default function Dashboard() {
         setPlayingId(null);
         setCurrentTime(0);
       };
+
+      // Connect to Web Audio API for visualizer
+      try {
+        if (!audioContextRef.current) {
+          audioContextRef.current = new (window.AudioContext || window.webkitAudioContext)();
+        }
+        if (audioContextRef.current.state === 'suspended') {
+          audioContextRef.current.resume();
+        }
+        const analyser = audioContextRef.current.createAnalyser();
+        analyser.fftSize = 256;
+        analyserRef.current = analyser;
+
+        const source = audioContextRef.current.createMediaElementSource(audio);
+        source.connect(analyser);
+        analyser.connect(audioContextRef.current.destination);
+      } catch (err) {
+        console.warn("Web Audio Context binding failed (procedural visualizer active):", err);
+      }
       
       audio.play().catch(err => {
         console.error("Audio playback failed", err);
@@ -286,6 +375,149 @@ export default function Dashboard() {
     const mins = Math.floor(time / 60);
     const secs = Math.floor(time % 60);
     return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
+  };
+
+  // Direct download handler for recent activity item
+  const handleDownloadActivity = (item) => {
+    if (!item.audio_url) return;
+    const fullUrl = `${BASE_URL}${item.audio_url}`;
+    const a = document.createElement('a');
+    a.href = fullUrl;
+    a.download = `${item.title.toLowerCase().replace(/\s+/g, '_') || 'voiceflow'}.mp3`;
+    a.click();
+    toast.success("Downloading audio...");
+  };
+
+  // Sandbox TTS Speech Synthesis
+  const handleSandboxGenerate = async () => {
+    if (!sandboxText.trim()) {
+      toast.error('Please enter some text in the sandbox editor.');
+      return;
+    }
+    setIsSandboxGenerating(true);
+    setIsSandboxPlaying(false);
+    setSandboxAudioUrl(null);
+
+    if (sandboxAudioRef.current) {
+      sandboxAudioRef.current.pause();
+    }
+
+    try {
+      const data = await ttsApi.generate(sandboxText, sandboxLang, sandboxVoice, 1.0, 1.0, "Sandbox Preview");
+      const fullUrl = `${BASE_URL}${data.audio_url}`;
+      setSandboxAudioUrl(fullUrl);
+      setIsSandboxPlaying(true);
+      toast.success('Sandbox speech generated!');
+      
+      const audio = new Audio(fullUrl);
+      audio.crossOrigin = "anonymous";
+      sandboxAudioRef.current = audio;
+      
+      audio.onended = () => {
+        setIsSandboxPlaying(false);
+      };
+
+      try {
+        if (!audioContextRef.current) {
+          audioContextRef.current = new (window.AudioContext || window.webkitAudioContext)();
+        }
+        if (audioContextRef.current.state === 'suspended') {
+          audioContextRef.current.resume();
+        }
+        const analyser = audioContextRef.current.createAnalyser();
+        analyser.fftSize = 256;
+        analyserRef.current = analyser;
+
+        const source = audioContextRef.current.createMediaElementSource(audio);
+        source.connect(analyser);
+        analyser.connect(audioContextRef.current.destination);
+      } catch (err) {
+        console.warn("Web Audio Context binding failed (procedural visualizer active):", err);
+      }
+
+      audio.play();
+    } catch (err) {
+      toast.error('API synthesis failed. Falling back to local browser voice.');
+      try {
+        window.speechSynthesis.cancel();
+        const utterance = new SpeechSynthesisUtterance(sandboxText);
+        
+        let langCode = 'en-US';
+        if (sandboxLang === 'sinhala') langCode = 'si-LK';
+        else if (sandboxLang === 'tamil') langCode = 'ta-IN';
+        else if (sandboxLang === 'hindi') langCode = 'hi-IN';
+        utterance.lang = langCode;
+        
+        const voices = window.speechSynthesis.getVoices();
+        const genderKey = sandboxVoice === 'female' ? 'female' : 'male';
+        const matchedVoice = voices.find(v => 
+          v.lang.startsWith(utterance.lang.substring(0, 2)) && 
+          v.name.toLowerCase().includes(genderKey)
+        ) || voices.find(v => v.lang.startsWith(utterance.lang.substring(0, 2)));
+        
+        if (matchedVoice) utterance.voice = matchedVoice;
+
+        utterance.onend = () => setIsSandboxPlaying(false);
+        utterance.onerror = () => setIsSandboxPlaying(false);
+
+        setIsSandboxPlaying(true);
+        window.speechSynthesis.speak(utterance);
+      } catch (speechErr) {
+        console.error("Local speech synthesis failed", speechErr);
+        toast.error("Speech playback unavailable.");
+      }
+    } finally {
+      setIsSandboxGenerating(false);
+    }
+  };
+
+  const toggleSandboxPlay = () => {
+    if (isSandboxPlaying) {
+      if (sandboxAudioRef.current) {
+        sandboxAudioRef.current.pause();
+      }
+      window.speechSynthesis.cancel();
+      setIsSandboxPlaying(false);
+    } else {
+      if (sandboxAudioUrl) {
+        if (sandboxAudioRef.current) {
+          sandboxAudioRef.current.play();
+          setIsSandboxPlaying(true);
+        }
+      } else {
+        handleSandboxGenerate();
+      }
+    }
+  };
+
+  // Export SVG Chart as Report File
+  const handleExportSVG = () => {
+    const svgEl = document.getElementById('usage-chart-svg');
+    if (!svgEl) {
+      toast.error("Chart elements not found.");
+      return;
+    }
+    try {
+      const serializer = new XMLSerializer();
+      let source = serializer.serializeToString(svgEl);
+      if (!source.match(/^<svg[^>]+xmlns="http\:\/\/www\.w3\.org\/2000\/svg"/)) {
+        source = source.replace(/^<svg/, '<svg xmlns="http://www.w3.org/2000/svg"');
+      }
+      if (!source.match(/^<svg[^>]+xmlns\:xlink="http\:\/\/www\.w3\.org\/1999\/xlink"/)) {
+        source = source.replace(/^<svg/, '<svg xmlns:xlink="http://www.w3.org/1999/xlink"');
+      }
+      const url = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(source);
+      const downloadLink = document.createElement("a");
+      downloadLink.href = url;
+      downloadLink.download = `voiceflow_telemetry_${activeMetric}_${activeRange}.svg`;
+      document.body.appendChild(downloadLink);
+      downloadLink.click();
+      document.body.removeChild(downloadLink);
+      toast.success("Telemetry report exported successfully!");
+    } catch (err) {
+      toast.error("Failed to export chart.");
+      console.error(err);
+    }
   };
 
   const pct = stats ? Math.min((stats.characters_used / stats.character_limit) * 100, 100) : 0;
@@ -500,7 +732,7 @@ export default function Dashboard() {
       {/* Usage Analytics & Graph Section */}
       {!loading && (
         <div className="glow-card p-6">
-          <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4 mb-6">
+          <div className="flex flex-col xl:flex-row justify-between xl:items-center gap-4 mb-6">
             <div>
               <h2 className="text-lg font-bold text-white flex items-center gap-2">
                 <BarChart3 size={18} className="text-primary" />
@@ -509,7 +741,27 @@ export default function Dashboard() {
               <p className="text-xs text-gray-400 mt-0.5">Daily synthesis metrics trend</p>
             </div>
             
-            <div className="flex items-center gap-3">
+            <div className="flex flex-wrap items-center gap-3">
+              {/* Line vs Bar Toggles */}
+              <div className="flex bg-white/5 border border-white/10 p-0.5 rounded-lg">
+                {[
+                  { id: 'line', label: 'Line' },
+                  { id: 'bar', label: 'Bar' }
+                ].map((type) => (
+                  <button
+                    key={type.id}
+                    onClick={() => setChartType(type.id)}
+                    className={`text-[10px] uppercase font-bold tracking-wider px-2.5 py-1.5 rounded-md transition-all ${
+                      chartType === type.id
+                        ? 'bg-white/10 text-white shadow-sm'
+                        : 'text-gray-400 hover:text-white'
+                    }`}
+                  >
+                    {type.label}
+                  </button>
+                ))}
+              </div>
+
               {/* Range Toggle */}
               <div className="flex bg-white/5 border border-white/10 p-0.5 rounded-lg">
                 {[
@@ -556,12 +808,22 @@ export default function Dashboard() {
                   </button>
                 ))}
               </div>
+
+              {/* Export SVG Button */}
+              <button
+                onClick={handleExportSVG}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary/10 border border-primary/20 hover:bg-primary/20 text-primary text-[10px] uppercase tracking-wider font-bold transition-all shadow-sm shadow-primary/5"
+                title="Export Chart as SVG"
+              >
+                <Download size={11} />
+                <span>Export</span>
+              </button>
             </div>
           </div>
           
           <div className="relative h-56 w-full bg-black/10 rounded-xl p-4 border border-white/5 flex flex-col justify-end">
             <div className="absolute inset-x-4 top-4 bottom-12">
-              <svg className="w-full h-full" viewBox="0 0 500 100" preserveAspectRatio="none">
+              <svg id="usage-chart-svg" className="w-full h-full" viewBox="0 0 500 100" preserveAspectRatio="none">
                 <defs>
                   <linearGradient id="chartGradient" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="0%" stopColor="rgba(99, 102, 241, 0.4)" />
@@ -574,23 +836,50 @@ export default function Dashboard() {
                 <line x1="0" y1="40" x2="500" y2="40" stroke="rgba(255,255,255,0.03)" strokeWidth="1" strokeDasharray="3 3" />
                 <line x1="0" y1="70" x2="500" y2="70" stroke="rgba(255,255,255,0.03)" strokeWidth="1" strokeDasharray="3 3" />
                 
-                {/* Smooth Area Path */}
-                <path
-                  d={fillD}
-                  fill="url(#chartGradient)"
-                  className="transition-all duration-500 ease-in-out"
-                />
-                
-                {/* Smooth Curve Line Path */}
-                <path
-                  d={pathD}
-                  fill="transparent"
-                  stroke="#6366f1"
-                  strokeWidth="2.5"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  className="transition-all duration-500 ease-in-out"
-                />
+                {chartType === 'line' ? (
+                  <>
+                    {/* Smooth Area Path */}
+                    <path
+                      d={fillD}
+                      fill="url(#chartGradient)"
+                      className="transition-all duration-500 ease-in-out"
+                    />
+                    
+                    {/* Smooth Curve Line Path */}
+                    <path
+                      d={pathD}
+                      fill="transparent"
+                      stroke="#6366f1"
+                      strokeWidth="2.5"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      className="transition-all duration-500 ease-in-out"
+                    />
+                  </>
+                ) : (
+                  // Bar Chart SVG columns
+                  points.map((p, i) => {
+                    const barWidth = Math.max(8, 300 / points.length);
+                    const barHeight = chartHeight - p.y;
+                    return (
+                      <g key={i} className="cursor-pointer group">
+                        <rect
+                          x={p.x - barWidth / 2}
+                          y={p.y}
+                          width={barWidth}
+                          height={barHeight > 0 ? barHeight : 2}
+                          rx="2"
+                          fill="rgba(99, 102, 241, 0.4)"
+                          stroke="#6366f1"
+                          strokeWidth="1"
+                          onMouseEnter={() => setHoveredPoint({ idx: i, x: p.x, y: p.y, val: p.val, label: p.label })}
+                          onMouseLeave={() => setHoveredPoint(null)}
+                          className="transition-all duration-300 hover:fill-[#a855f7] hover:stroke-white"
+                        />
+                      </g>
+                    );
+                  })
+                )}
 
                 {/* Vertical hover line indicator */}
                 {hoveredPoint && (
@@ -605,22 +894,26 @@ export default function Dashboard() {
                   />
                 )}
                 
-                {/* Data points */}
-                {points.map((p, i) => (
-                  <g key={i} className="cursor-pointer">
-                    <circle
-                      cx={p.x}
-                      cy={p.y}
-                      r={hoveredPoint?.idx === i ? "6" : "3.5"}
-                      fill={hoveredPoint?.idx === i ? "#a855f7" : "#6366f1"}
-                      stroke="#fff"
-                      strokeWidth={hoveredPoint?.idx === i ? "2" : "1.5"}
-                      onMouseEnter={() => setHoveredPoint({ idx: i, x: p.x, y: p.y, val: p.val, label: p.label })}
-                      onMouseLeave={() => setHoveredPoint(null)}
-                      className="transition-all duration-150"
-                    />
-                  </g>
-                ))}
+                {/* Data points (Only for Line mode or hovered point) */}
+                {points.map((p, i) => {
+                  const isHovered = hoveredPoint?.idx === i;
+                  if (chartType !== 'line' && !isHovered) return null;
+                  return (
+                    <g key={i} className="cursor-pointer">
+                      <circle
+                        cx={p.x}
+                        cy={p.y}
+                        r={isHovered ? "6" : "3.5"}
+                        fill={isHovered ? "#a855f7" : "#6366f1"}
+                        stroke="#fff"
+                        strokeWidth={isHovered ? "2" : "1.5"}
+                        onMouseEnter={() => setHoveredPoint({ idx: i, x: p.x, y: p.y, val: p.val, label: p.label })}
+                        onMouseLeave={() => setHoveredPoint(null)}
+                        className="transition-all duration-150"
+                      />
+                    </g>
+                  );
+                })}
               </svg>
             </div>
 
@@ -676,7 +969,7 @@ export default function Dashboard() {
       )}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        {/* Left Column: Quick Actions & System Health */}
+        {/* Left Column: Quick Actions, Sandbox & System Health */}
         <div className="space-y-8">
           
           {/* Quick Actions */}
@@ -716,6 +1009,83 @@ export default function Dashboard() {
                   <p className="text-gray-400 text-xs mt-1 leading-normal">Browse, re-download, or delete previous syntheses.</p>
                 </div>
               </Link>
+            </div>
+          </div>
+
+          {/* Quick TTS Sandbox Card */}
+          <div className="glow-card p-6">
+            <h2 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
+              <Sparkles size={18} className="text-primary animate-pulse" />
+              <span>Quick Speech Sandbox</span>
+            </h2>
+            <p className="text-xs text-gray-400 mb-4">
+              Synthesize and preview short phrases instantly right from your dashboard.
+            </p>
+            <div className="space-y-4">
+              <textarea
+                value={sandboxText}
+                onChange={(e) => setSandboxText(e.target.value.slice(0, 150))}
+                placeholder="Type a word or sentence to speak..."
+                className="w-full bg-black/35 border border-white/10 rounded-xl p-3 text-sm text-gray-200 placeholder-gray-600 focus:outline-none focus:ring-1 focus:ring-primary/50 resize-none h-20"
+                maxLength={150}
+              />
+              <div className="flex justify-between items-center text-[10px] text-gray-500 font-mono -mt-2">
+                <span>Max 150 chars</span>
+                <span>{sandboxText.length}/150</span>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider block mb-1">Language</label>
+                  <select
+                    value={sandboxLang}
+                    onChange={(e) => setSandboxLang(e.target.value)}
+                    className="w-full bg-white/5 border border-white/10 rounded-lg px-2.5 py-1.5 text-xs text-gray-300 focus:outline-none bg-[#13131a]"
+                  >
+                    <option value="english">🇺🇸 English</option>
+                    <option value="sinhala">🇱🇰 Sinhala</option>
+                    <option value="tamil">🇱🇰 Tamil</option>
+                    <option value="hindi">🇮🇳 Hindi</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider block mb-1">Voice</label>
+                  <select
+                    value={sandboxVoice}
+                    onChange={(e) => setSandboxVoice(e.target.value)}
+                    className="w-full bg-white/5 border border-white/10 rounded-lg px-2.5 py-1.5 text-xs text-gray-300 focus:outline-none bg-[#13131a]"
+                  >
+                    <option value="natural">Natural AI</option>
+                    <option value="male">Std Male</option>
+                    <option value="female">Std Female</option>
+                  </select>
+                </div>
+              </div>
+              <button
+                onClick={toggleSandboxPlay}
+                disabled={isSandboxGenerating}
+                className={`w-full py-2.5 rounded-xl font-semibold text-xs flex items-center justify-center space-x-2 transition-all duration-300 shadow-md ${
+                  isSandboxPlaying
+                    ? 'bg-red-500/20 text-red-400 border border-red-500/30 hover:bg-red-500/30'
+                    : 'bg-primary text-white hover:opacity-90 shadow-primary/20'
+                }`}
+              >
+                {isSandboxGenerating ? (
+                  <>
+                    <Loader2 size={14} className="animate-spin" />
+                    <span>Synthesizing...</span>
+                  </>
+                ) : isSandboxPlaying ? (
+                  <>
+                    <Square size={12} fill="currentColor" />
+                    <span>Stop Playback</span>
+                  </>
+                ) : (
+                  <>
+                    <Play size={12} fill="currentColor" className="ml-0.5" />
+                    <span>Listen Sample</span>
+                  </>
+                )}
+              </button>
             </div>
           </div>
 
@@ -776,19 +1146,53 @@ export default function Dashboard() {
 
           {/* Diagnostics terminal and console */}
           <div className="glow-card p-6 overflow-hidden">
-            <div className="flex items-center justify-between mb-5">
-              <h2 className="text-lg font-bold text-white flex items-center gap-2">
-                <Cpu size={18} className="text-primary animate-pulse" />
-                <span>GPU Cluster Telemetry</span>
-              </h2>
-              <button 
-                onClick={handleRunPingTest}
-                disabled={pinging}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/5 border border-white/10 hover:bg-white/10 text-gray-300 text-xs font-semibold font-mono disabled:opacity-50 transition-colors"
-              >
-                <RefreshCw size={12} className={pinging ? "animate-spin" : ""} />
-                <span>{pinging ? "Testing..." : "Run Diagnostic"}</span>
-              </button>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-5">
+              <div>
+                <h2 className="text-lg font-bold text-white flex items-center gap-2">
+                  <Cpu size={18} className="text-primary animate-pulse" />
+                  <span>GPU Cluster Telemetry</span>
+                </h2>
+                <p className="text-xs text-gray-500 mt-0.5">Live hardware performance nodes</p>
+              </div>
+
+              {/* Optimization Mode switcher */}
+              <div className="flex bg-white/5 border border-white/10 p-0.5 rounded-lg self-start sm:self-auto">
+                {[
+                  { id: 'eco', label: 'Eco-Scribe' },
+                  { id: 'studio', label: 'Studio-Boost' },
+                  { id: 'quantum', label: 'Quantum-Flow' }
+                ].map((mode) => (
+                  <button
+                    key={mode.id}
+                    onClick={() => setTelemetryMode(mode.id)}
+                    className={`text-[9px] uppercase font-bold tracking-wider px-2.5 py-1.5 rounded-md transition-all ${
+                      telemetryMode === mode.id
+                        ? 'bg-primary text-white shadow-sm shadow-primary/10'
+                        : 'text-gray-400 hover:text-white'
+                    }`}
+                  >
+                    {mode.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Nodes Status Grid */}
+            <div className="grid grid-cols-3 gap-3 mb-4">
+              {[
+                { name: 'Node-Alpha', role: 'TTS-Primary', status: 'Active', color: 'text-green-400', pct: 100 },
+                { name: 'Node-Beta', role: 'TTS-Secondary', status: telemetryMode === 'eco' ? 'Standby' : 'Active', color: telemetryMode === 'eco' ? 'text-yellow-400' : 'text-green-400', pct: telemetryMode === 'eco' ? 0 : 100 },
+                { name: 'Node-Gamma', role: 'CDN-Edge', status: 'Active', color: 'text-green-400', pct: 100 }
+              ].map((node, i) => (
+                <div key={i} className="bg-black/25 p-2.5 rounded-xl border border-white/5 text-center flex flex-col justify-between">
+                  <span className="text-[10px] font-bold text-gray-300 block truncate">{node.name}</span>
+                  <span className="text-[8px] text-gray-500 uppercase tracking-widest mt-0.5 block">{node.role}</span>
+                  <div className="flex items-center justify-center gap-1 mt-1.5">
+                    <span className={`w-1.5 h-1.5 rounded-full ${node.status === 'Active' ? 'bg-green-500 animate-pulse' : 'bg-yellow-500'}`}></span>
+                    <span className={`text-[9px] font-mono font-semibold ${node.color}`}>{node.status}</span>
+                  </div>
+                </div>
+              ))}
             </div>
 
             <div className="grid grid-cols-2 gap-4">
@@ -796,10 +1200,21 @@ export default function Dashboard() {
                 <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider block">GPU Cluster Load</span>
                 <div className="flex items-baseline gap-1.5">
                   <span className="text-xl font-bold text-white font-mono">{gpuLoad}%</span>
-                  <span className="text-[9px] text-gray-500">Nominal</span>
+                  <span className="text-[9px] text-gray-500">
+                    {gpuLoad > 70 ? "Accelerated" : gpuLoad < 20 ? "Eco-Save" : "Nominal"}
+                  </span>
                 </div>
                 <div className="h-1 bg-white/5 rounded-full overflow-hidden">
-                  <div className="h-full bg-gradient-to-r from-primary to-secondary transition-all duration-500" style={{ width: `${gpuLoad}%` }}></div>
+                  <div 
+                    className={`h-full transition-all duration-500 ${
+                      telemetryMode === 'eco' 
+                        ? 'bg-green-500' 
+                        : telemetryMode === 'quantum' 
+                          ? 'bg-gradient-to-r from-purple-500 to-pink-500' 
+                          : 'bg-gradient-to-r from-primary to-secondary'
+                    }`} 
+                    style={{ width: `${gpuLoad}%` }}
+                  ></div>
                 </div>
               </div>
 
@@ -807,10 +1222,17 @@ export default function Dashboard() {
                 <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider block">Diagnostics Latency</span>
                 <div className="flex items-baseline gap-1.5">
                   <span className="text-xl font-bold text-white font-mono">{pingTime}ms</span>
-                  <span className="text-[9px] text-green-400 font-semibold">SLA OK</span>
+                  <span className={`text-[9px] font-semibold ${pingTime < 12 ? 'text-purple-400' : 'text-green-400'}`}>
+                    {pingTime < 12 ? 'ULTRA OK' : 'SLA OK'}
+                  </span>
                 </div>
                 <div className="h-1 bg-white/5 rounded-full overflow-hidden">
-                  <div className="h-full bg-green-500" style={{ width: `${Math.min((pingTime / 150) * 100, 100)}%` }}></div>
+                  <div 
+                    className={`h-full transition-all duration-500 ${
+                      telemetryMode === 'quantum' ? 'bg-purple-500' : 'bg-green-500'
+                    }`} 
+                    style={{ width: `${Math.min((pingTime / 150) * 100, 100)}%` }}
+                  ></div>
                 </div>
               </div>
             </div>
@@ -877,7 +1299,7 @@ export default function Dashboard() {
 
         {/* Right Column: Recent Activity with Upgraded Media Controllers */}
         <div className="glow-card p-6 h-fit">
-          <div className="flex justify-between items-center mb-6">
+          <div className="flex justify-between items-center mb-4">
             <div>
               <h2 className="text-lg font-bold text-white flex items-center gap-2">
                 <Volume2 size={18} className="text-secondary" />
@@ -890,13 +1312,53 @@ export default function Dashboard() {
             </Link>
           </div>
 
+          {/* Search bar */}
+          <div className="relative mb-5">
+            <input
+              type="text"
+              value={recentSearch}
+              onChange={(e) => setRecentSearch(e.target.value)}
+              placeholder="Search recent outputs..."
+              className="w-full bg-black/35 border border-white/10 rounded-xl pl-9 pr-8 py-2 text-xs text-gray-200 placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-primary/50"
+            />
+            <Search size={13} className="absolute left-3.5 top-3 text-gray-500" />
+            {recentSearch && (
+              <button
+                onClick={() => setRecentSearch('')}
+                className="absolute right-3 top-2.5 text-gray-500 hover:text-white font-semibold text-xs"
+              >
+                ×
+              </button>
+            )}
+          </div>
+
           <div className="space-y-4">
             {recentActivity.length === 0 ? (
               <p className="text-gray-500 text-sm py-8 text-center bg-white/5 rounded-xl border border-dashed border-white/5">
                 No voice generations recorded. Create a voice synthesis to get started!
               </p>
+            ) : recentActivity.filter(item => {
+              if (!recentSearch.trim()) return true;
+              const query = recentSearch.toLowerCase();
+              return (
+                item.title?.toLowerCase().includes(query) ||
+                item.voice?.toLowerCase().includes(query) ||
+                item.language?.toLowerCase().includes(query)
+              );
+            }).length === 0 ? (
+              <p className="text-gray-500 text-sm py-8 text-center bg-white/5 rounded-xl border border-dashed border-white/5">
+                No matches found for "{recentSearch}".
+              </p>
             ) : (
-              recentActivity.map((item) => {
+              recentActivity.filter(item => {
+                if (!recentSearch.trim()) return true;
+                const query = recentSearch.toLowerCase();
+                return (
+                  item.title?.toLowerCase().includes(query) ||
+                  item.voice?.toLowerCase().includes(query) ||
+                  item.language?.toLowerCase().includes(query)
+                );
+              }).map((item) => {
                 const isActive = playingId === item.id;
                 return (
                   <div 
@@ -952,6 +1414,15 @@ export default function Dashboard() {
                       </div>
                       
                       <div className="flex items-center gap-2 ml-2">
+                        {/* Direct Download Button */}
+                        <button 
+                          onClick={() => handleDownloadActivity(item)}
+                          className="w-8 h-8 rounded-lg bg-white/5 border border-white/10 hover:bg-primary/20 hover:text-primary text-gray-400 hover:text-white flex items-center justify-center transition-all shrink-0"
+                          title="Download Audio MP3"
+                        >
+                          <Download size={13} />
+                        </button>
+
                         <button 
                           onClick={() => {
                             navigator.clipboard.writeText(item.text || "");
@@ -965,9 +1436,24 @@ export default function Dashboard() {
                       </div>
                     </div>
 
-                    {/* Upgraded expandible media seek bar, time display and speed controllers */}
+                    {/* Morphing circular visualizer for active output */}
                     {isActive && (
-                      <div className="mt-4 pt-3 border-t border-white/5 space-y-3">
+                      <div className="mt-3 h-20 w-full rounded-xl bg-black/35 border border-white/5 overflow-hidden flex items-center justify-center relative shadow-inner">
+                        <div className="absolute inset-0 bg-primary/5 animate-pulse pointer-events-none"></div>
+                        <div className="w-16 h-16">
+                          <VoiceSphereVisualizer 
+                            isPlaying={isActive} 
+                            analyserRef={analyserRef} 
+                            speed={playSpeed} 
+                            pitch={1.0} 
+                          />
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Upgraded expandable media seek bar, time display and speed controllers */}
+                    {isActive && (
+                      <div className="mt-3 pt-3 border-t border-white/5 space-y-3">
                         <div className="flex items-center gap-3">
                           <span className="text-[10px] text-gray-400 font-mono shrink-0 w-8">{formatTime(currentTime)}</span>
                           <input 
