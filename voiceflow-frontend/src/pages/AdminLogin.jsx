@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Mail, Lock, ShieldAlert, ShieldCheck, Mic2, Eye, EyeOff, Cpu, Server, Activity } from 'lucide-react';
+import { Mail, Lock, ShieldAlert, ShieldCheck, Mic2, Eye, EyeOff, Cpu, Server, Activity, Check, AlertCircle } from 'lucide-react';
 import { motion } from 'framer-motion';
 import toast from 'react-hot-toast';
 import { authApi, setToken, setUser } from '../api';
 import loginBanner from '../assets/login_banner.png';
 import Logo from '../components/Logo';
+import InteractiveParticleBackground from '../components/InteractiveParticleBackground';
 
 export default function AdminLogin() {
   const [email, setEmail] = useState('');
@@ -76,6 +77,9 @@ export default function AdminLogin() {
 
   return (
     <div className="flex-1 min-h-[calc(100vh-4rem)] flex items-center justify-center p-4 sm:p-6 lg:p-8 bg-gradient-to-tr from-background via-[#1a1236] to-[#0d091a] relative overflow-hidden bg-grid-pattern">
+      {/* Interactive Particle Network for Admin Workspace background */}
+      <InteractiveParticleBackground />
+
       {/* Glow Effects in Background */}
       <div className="absolute top-[-10%] right-[-10%] w-[40%] h-[40%] bg-primary/15 blur-[120px] rounded-full pointer-events-none -z-10 animate-float"></div>
       <div className="absolute bottom-[-10%] left-[-10%] w-[40%] h-[40%] bg-indigo-500/15 blur-[120px] rounded-full pointer-events-none -z-10 animate-float-delayed"></div>
@@ -128,9 +132,16 @@ export default function AdminLogin() {
                     id="admin-email-input"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    className="w-full bg-white/5 border border-white/10 rounded-full pl-11 pr-6 py-3.5 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-transparent transition-all duration-300 text-sm focus:bg-white/10"
+                    className="w-full bg-white/5 border border-white/10 rounded-full pl-11 pr-12 py-3.5 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-transparent transition-all duration-300 text-sm focus:bg-white/10 input-glow"
                     placeholder="Admin Email (hasintha@gmail.com)"
                   />
+                  {email && (
+                    /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) ? (
+                      <Check size={16} className="absolute right-4 top-1/2 -translate-y-1/2 text-emerald-400" />
+                    ) : (
+                      <AlertCircle size={16} className="absolute right-4 top-1/2 -translate-y-1/2 text-rose-400" />
+                    )
+                  )}
                 </div>
               </motion.div>
 
@@ -145,7 +156,7 @@ export default function AdminLogin() {
                     id="admin-password-input"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="w-full bg-white/5 border border-white/10 rounded-full pl-11 pr-12 py-3.5 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-transparent transition-all duration-300 text-sm focus:bg-white/10"
+                    className="w-full bg-white/5 border border-white/10 rounded-full pl-11 pr-12 py-3.5 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-transparent transition-all duration-300 text-sm focus:bg-white/10 input-glow"
                     placeholder="Password"
                   />
                   <button
@@ -164,7 +175,7 @@ export default function AdminLogin() {
                   type="submit" 
                   disabled={isLoading}
                   id="admin-login-submit-btn"
-                  className="w-full py-3.5 bg-gradient-to-r from-primary to-indigo-600 hover:from-primary/95 hover:to-indigo-700 text-white rounded-full font-bold transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-indigo-500/10 hover:shadow-indigo-500/20 active:scale-[0.98] flex items-center justify-center text-sm tracking-wide mt-6"
+                  className="w-full py-3.5 btn-premium text-white rounded-full font-bold transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-indigo-500/10 hover:shadow-purple-500/30 scale-100 hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center text-sm tracking-wide mt-6"
                 >
                   {isLoading ? (
                     <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>

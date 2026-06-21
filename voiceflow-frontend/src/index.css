@@ -282,3 +282,15 @@
   z-index: -1;
 }
 
+@keyframes gradient-shift {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+.btn-premium {
+  background: linear-gradient(270deg, #6366f1, #a855f7, #ec4899, #db2777);
+  background-size: 600% 600%;
+  animation: gradient-shift 10s ease infinite;
+}
+

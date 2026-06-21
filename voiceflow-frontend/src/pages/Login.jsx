@@ -6,6 +6,8 @@ import toast from 'react-hot-toast';
 import { authApi, setToken, setUser } from '../api';
 import loginBanner from '../assets/login_banner.png';
 import Logo from '../components/Logo';
+import InteractiveParticleBackground from '../components/InteractiveParticleBackground';
+import VoiceSphereVisualizer from '../components/VoiceSphereVisualizer';
 
 export default function Login({ initialMode }) {
   const navigate = useNavigate();
@@ -422,6 +424,9 @@ export default function Login({ initialMode }) {
 
   return (
     <div className="flex-1 min-h-[calc(100vh-4rem)] flex items-center justify-center p-4 sm:p-6 lg:p-8 bg-gradient-to-tr from-background via-[#120e26] to-[#0a0a0f] relative overflow-hidden bg-grid-pattern">
+      {/* Dynamic Interactive Particle Background for the Login Workspace */}
+      <InteractiveParticleBackground />
+
       {/* Glow Effects in Background */}
       <div className="absolute top-[-10%] right-[-10%] w-[40%] h-[40%] bg-secondary/15 blur-[120px] rounded-full pointer-events-none -z-10 animate-float"></div>
       <div className="absolute bottom-[-10%] left-[-10%] w-[40%] h-[40%] bg-primary/15 blur-[120px] rounded-full pointer-events-none -z-10 animate-float-delayed"></div>
@@ -439,6 +444,9 @@ export default function Login({ initialMode }) {
           }`}
           style={{ backgroundImage: `url(${loginBanner})` }}
         >
+          {/* Particles Inside Sliding Banner for Advanced Visual Depth */}
+          <InteractiveParticleBackground />
+
           {/* Overlay gradient for contrast */}
           <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-[#0a0a0f]/40 to-black/60 z-10" />
 
@@ -483,15 +491,9 @@ export default function Login({ initialMode }) {
                       </div>
                     </div>
 
-                    {/* Soundwave bars */}
-                    <div className="flex items-end justify-between h-9 gap-1.5 bg-black/25 rounded-xl p-3 border border-white/5">
-                      <div className={`w-1 bg-primary/75 rounded-full wave-height-1 ${isPlayingPreview ? 'animate-wave-active' : 'animate-wave-bar'}`} style={{ animationDelay: '0.1s' }}></div>
-                      <div className={`w-1 bg-secondary/80 rounded-full wave-height-4 ${isPlayingPreview ? 'animate-wave-active' : 'animate-wave-bar'}`} style={{ animationDelay: '0.3s' }}></div>
-                      <div className={`w-1 bg-pink-500/85 rounded-full wave-height-2 ${isPlayingPreview ? 'animate-wave-active' : 'animate-wave-bar'}`} style={{ animationDelay: '0.5s' }}></div>
-                      <div className={`w-1 bg-secondary/80 rounded-full wave-height-5 ${isPlayingPreview ? 'animate-wave-active' : 'animate-wave-bar'}`} style={{ animationDelay: '0.2s' }}></div>
-                      <div className={`w-1 bg-primary/75 rounded-full wave-height-3 ${isPlayingPreview ? 'animate-wave-active' : 'animate-wave-bar'}`} style={{ animationDelay: '0.4s' }}></div>
-                      <div className={`w-1 bg-pink-500/85 rounded-full wave-height-6 ${isPlayingPreview ? 'animate-wave-active' : 'animate-wave-bar'}`} style={{ animationDelay: '0.6s' }}></div>
-                      <div className={`w-1 bg-secondary/80 rounded-full wave-height-2 ${isPlayingPreview ? 'animate-wave-active' : 'animate-wave-bar'}`} style={{ animationDelay: '0.1s' }}></div>
+                    {/* Morphing Voice Sphere Visualizer (Replacing old soundwave bars) */}
+                    <div className="w-full h-32 bg-black/35 rounded-xl border border-white/5 overflow-hidden flex items-center justify-center">
+                      <VoiceSphereVisualizer isPlaying={isPlayingPreview} />
                     </div>
 
                     <div className="flex justify-between items-center text-[10px] mt-3 border-t border-white/5 pt-3">
@@ -539,15 +541,9 @@ export default function Login({ initialMode }) {
                       </div>
                     </div>
 
-                    {/* Soundwave bars */}
-                    <div className="flex items-end justify-between h-9 gap-1.5 bg-black/25 rounded-xl p-3 border border-white/5">
-                      <div className={`w-1 bg-secondary/80 rounded-full wave-height-3 ${isPlayingPreview ? 'animate-wave-active' : 'animate-wave-bar'}`} style={{ animationDelay: '0.2s' }}></div>
-                      <div className={`w-1 bg-primary/75 rounded-full wave-height-1 ${isPlayingPreview ? 'animate-wave-active' : 'animate-wave-bar'}`} style={{ animationDelay: '0.4s' }}></div>
-                      <div className={`w-1 bg-pink-500/85 rounded-full wave-height-5 ${isPlayingPreview ? 'animate-wave-active' : 'animate-wave-bar'}`} style={{ animationDelay: '0.6s' }}></div>
-                      <div className={`w-1 bg-secondary/80 rounded-full wave-height-2 ${isPlayingPreview ? 'animate-wave-active' : 'animate-wave-bar'}`} style={{ animationDelay: '0.1s' }}></div>
-                      <div className={`w-1 bg-primary/75 rounded-full wave-height-4 ${isPlayingPreview ? 'animate-wave-active' : 'animate-wave-bar'}`} style={{ animationDelay: '0.3s' }}></div>
-                      <div className={`w-1 bg-pink-500/85 rounded-full wave-height-3 ${isPlayingPreview ? 'animate-wave-active' : 'animate-wave-bar'}`} style={{ animationDelay: '0.5s' }}></div>
-                      <div className={`w-1 bg-secondary/80 rounded-full wave-height-1 ${isPlayingPreview ? 'animate-wave-active' : 'animate-wave-bar'}`} style={{ animationDelay: '0.2s' }}></div>
+                    {/* Morphing Voice Sphere Visualizer (Replacing old soundwave bars) */}
+                    <div className="w-full h-32 bg-black/35 rounded-xl border border-white/5 overflow-hidden flex items-center justify-center">
+                      <VoiceSphereVisualizer isPlaying={isPlayingPreview} />
                     </div>
 
                     <div className="flex justify-between items-center text-[10px] mt-3 border-t border-white/5 pt-3">
@@ -731,7 +727,7 @@ export default function Login({ initialMode }) {
                   type="submit" 
                   disabled={isLoginLoading}
                   id="login-submit-btn"
-                  className="w-full py-3.5 bg-gradient-to-r from-[#c084fc] to-[#db2777] hover:from-[#a855f7] hover:to-[#be185d] text-white rounded-full font-bold transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-pink-500/10 hover:shadow-pink-500/20 active:scale-[0.98] flex items-center justify-center text-sm tracking-wide mt-5"
+                  className="w-full py-3.5 btn-premium text-white rounded-full font-bold transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-pink-500/10 hover:shadow-purple-500/30 scale-100 hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center text-sm tracking-wide mt-5"
                 >
                   {isLoginLoading ? (
                     <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
@@ -941,7 +937,7 @@ export default function Login({ initialMode }) {
                 <button 
                   type="submit" 
                   disabled={isRegLoading}
-                  className="w-full py-3.5 bg-gradient-to-r from-[#c084fc] to-[#db2777] hover:from-[#a855f7] hover:to-[#be185d] text-white rounded-full font-bold transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-pink-500/10 hover:shadow-pink-500/20 active:scale-[0.98] flex items-center justify-center text-sm tracking-wide mt-5"
+                  className="w-full py-3.5 btn-premium text-white rounded-full font-bold transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-pink-500/10 hover:shadow-purple-500/30 scale-100 hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center text-sm tracking-wide mt-5"
                 >
                   {isRegLoading ? (
                     <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
@@ -1164,14 +1160,18 @@ export default function Login({ initialMode }) {
                 ✕
               </button>
 
-              <div className="relative mb-8 mt-2 flex items-center justify-center">
+               <div className="relative mb-8 mt-2 flex items-center justify-center w-36 h-36">
+                {/* Holographic tech ring rotating wrappers */}
+                <div className="absolute inset-0 rounded-full border border-dashed border-secondary/35 animate-spin" style={{ animationDuration: '16s' }}></div>
+                <div className="absolute inset-2 rounded-full border border-dashed border-primary/20 animate-spin" style={{ animationDuration: '11s', animationDirection: 'reverse' }}></div>
+                
                 {/* Ripples from index.css */}
                 <div className="absolute w-24 h-24 rounded-full bg-secondary/10 border border-secondary/20 animate-ripple"></div>
                 <div className="absolute w-24 h-24 rounded-full bg-secondary/20 border border-secondary/30 animate-ripple" style={{ animationDelay: '0.6s' }}></div>
                 <div className="absolute w-24 h-24 rounded-full bg-secondary/5 border border-secondary/10 animate-ripple" style={{ animationDelay: '1.2s' }}></div>
                 
-                <div className="w-16 h-16 rounded-full bg-gradient-to-tr from-secondary to-[#db2777] flex items-center justify-center text-white relative z-10 shadow-lg shadow-pink-500/35">
-                  <Mic size={24} className="animate-bounce" />
+                <div className="w-20 h-20 rounded-full bg-gradient-to-tr from-secondary via-pink-500 to-primary flex items-center justify-center text-white relative z-10 shadow-lg shadow-pink-500/35">
+                  <Mic size={26} className="animate-pulse" />
                 </div>
               </div>
 
