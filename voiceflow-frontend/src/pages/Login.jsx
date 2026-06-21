@@ -3,7 +3,7 @@ import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { Mail, Lock, Mic2, Eye, EyeOff, Sparkles, Volume2, ArrowRight, Mic, UserPlus, User, Check, AlertCircle, Play, Square } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
-import { authApi, setToken, setUser } from '../api';
+import { authApi, setToken, setUser, BASE_URL, setBaseUrl } from '../api';
 import loginBanner from '../assets/login_banner.png';
 import Logo from '../components/Logo';
 import InteractiveParticleBackground from '../components/InteractiveParticleBackground';
@@ -72,6 +72,10 @@ export default function Login({ initialMode }) {
   const [isSendingForgot, setIsSendingForgot] = useState(false);
   const [isListening, setIsListening] = useState(false);
   const [voiceCommandMessage, setVoiceCommandMessage] = useState('');
+
+  // Server Settings States
+  const [showServerModal, setShowServerModal] = useState(false);
+  const [serverUrl, setServerUrl] = useState(BASE_URL);
 
   // Audio Showcase Preview State
   const [isPlayingPreview, setIsPlayingPreview] = useState(false);
@@ -264,6 +268,16 @@ export default function Login({ initialMode }) {
     document.title = isLogin ? "Log In - VoiceFlow AI" : "Register - VoiceFlow AI";
   }, [isLogin]);
 
+  const handleSaveServerUrl = (e) => {
+    e.preventDefault();
+    setBaseUrl(serverUrl);
+    toast.success('Server API URL updated successfully!');
+    setShowServerModal(false);
+    setTimeout(() => {
+      window.location.reload();
+    }, 800);
+  };
+
   const handleLogin = async (e) => {
     e.preventDefault();
     setIsLoginLoading(true);
@@ -282,7 +296,12 @@ export default function Login({ initialMode }) {
       toast.success('Welcome back!');
       navigate('/dashboard/generate');
     } catch (err) {
-      toast.error(err.message || 'Login failed. Please check your credentials.');
+      if (err.message.includes('Failed to fetch') || err.message.includes('NetworkError') || err.message.includes('network error')) {
+        toast.error('Connection failed! Cannot reach backend server.', { id: 'network-err' });
+        setShowServerModal(true);
+      } else {
+        toast.error(err.message || 'Login failed. Please check your credentials.');
+      }
     } finally {
       setIsLoginLoading(false);
     }
@@ -299,7 +318,12 @@ export default function Login({ initialMode }) {
       toast.success('Account created successfully!');
       navigate('/dashboard/generate');
     } catch (err) {
-      toast.error(err.message || 'Registration failed.');
+      if (err.message.includes('Failed to fetch') || err.message.includes('NetworkError') || err.message.includes('network error')) {
+        toast.error('Connection failed! Cannot reach backend server.', { id: 'network-err' });
+        setShowServerModal(true);
+      } else {
+        toast.error(err.message || 'Registration failed.');
+      }
     } finally {
       setIsRegLoading(false);
     }
@@ -783,11 +807,23 @@ export default function Login({ initialMode }) {
               </button>
             </div>
             
-            <div className="text-center text-[11px]">
-              <span className="text-gray-500">Are you an administrator? </span>
-              <Link to="/admin/login" className="text-secondary/80 hover:text-secondary font-semibold transition-colors duration-300 bg-secondary/5 px-2 py-0.5 rounded border border-secondary/10">
-                Admin Portal
-              </Link>
+            <div className="text-center text-[11px] flex flex-col gap-1 items-center">
+              <div>
+                <span className="text-gray-500">Are you an administrator? </span>
+                <Link to="/admin/login" className="text-secondary/80 hover:text-secondary font-semibold transition-colors duration-300 bg-secondary/5 px-2 py-0.5 rounded border border-secondary/10">
+                  Admin Portal
+                </Link>
+              </div>
+              <div className="flex items-center gap-1 mt-1 text-[10px]">
+                <span className="text-gray-600">API Connection Status:</span>
+                <button
+                  type="button"
+                  onClick={() => setShowServerModal(true)}
+                  className="text-primary hover:text-primary/80 font-bold transition-colors duration-300 underline cursor-pointer"
+                >
+                  Configure Server Endpoint
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -996,6 +1032,16 @@ export default function Login({ initialMode }) {
             <div className="text-center text-[11px] text-gray-500 uppercase tracking-widest font-bold">
               VoiceFlow AI Studio
             </div>
+            <div className="text-center text-[10px] flex items-center justify-center gap-1">
+              <span className="text-gray-600 font-sans">API Endpoint:</span>
+              <button
+                type="button"
+                onClick={() => setShowServerModal(true)}
+                className="text-primary hover:text-primary/80 font-bold transition-colors duration-300 underline cursor-pointer font-sans"
+              >
+                Configure Connection
+              </button>
+            </div>
           </div>
         </div>
       </motion.div>
@@ -1200,6 +1246,76 @@ export default function Login({ initialMode }) {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Dynamic Backend URL configuration modal */}
+      {showServerModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-in fade-in duration-300">
+          <motion.div
+            initial={{ scale: 0.95, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            className="w-full max-w-md p-6 rounded-3xl glass-panel border border-white/15 shadow-2xl relative"
+          >
+            <button
+              onClick={() => setShowServerModal(false)}
+              className="absolute top-4 right-4 text-gray-400 hover:text-white transition-colors text-sm font-semibold bg-white/5 hover:bg-white/10 w-8 h-8 rounded-full flex items-center justify-center border border-white/10"
+              type="button"
+            >
+              ✕
+            </button>
+            
+            <div className="flex items-center space-x-2.5 mb-5">
+              <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-primary to-secondary flex items-center justify-center text-white shadow-md shadow-purple-500/25">
+                <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                  <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/>
+                </svg>
+              </div>
+              <h2 className="text-xl font-black text-white tracking-tight">API Server Settings</h2>
+            </div>
+            
+            <form onSubmit={handleSaveServerUrl} className="space-y-4">
+              <p className="text-xs text-gray-400 leading-relaxed text-left">
+                Configure the backend endpoint URL. If you are running the backend locally, use <code className="text-secondary font-mono">http://localhost:8080</code>. For cloud deployments, enter your hosted HTTPS URL.
+              </p>
+              
+              <div className="space-y-1 text-left">
+                <label className="text-xs font-semibold text-gray-400" htmlFor="server-url-input">API Base URL</label>
+                <input
+                  type="url"
+                  required
+                  id="server-url-input"
+                  value={serverUrl}
+                  onChange={(e) => setServerUrl(e.target.value)}
+                  className="w-full bg-white/5 border border-white/10 rounded-full px-6 py-3.5 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-secondary/40 focus:border-transparent transition-all duration-300 text-sm focus:bg-white/10 font-mono"
+                  placeholder="e.g. https://api.voiceflow.ai"
+                />
+              </div>
+
+              <div className="flex justify-between items-center text-[10px] text-gray-500 pt-1 font-mono">
+                <span>Default: http://localhost:8080</span>
+                <span className="text-primary font-bold">Active: {BASE_URL}</span>
+              </div>
+              
+              <div className="flex space-x-3 mt-5">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setServerUrl('http://localhost:8080');
+                  }}
+                  className="w-1/3 py-3 bg-white/5 hover:bg-white/10 border border-white/10 text-white rounded-full font-bold transition-all duration-300 text-sm active:scale-[0.98]"
+                >
+                  Reset Local
+                </button>
+                <button
+                  type="submit"
+                  className="w-2/3 py-3.5 bg-gradient-to-r from-primary to-secondary hover:opacity-90 text-white rounded-full font-bold transition-all duration-300 text-sm flex items-center justify-center active:scale-[0.98] shadow-lg shadow-purple-500/20"
+                >
+                  Save & Reload
+                </button>
+              </div>
+            </form>
+          </motion.div>
+        </div>
+      )}
     </div>
 
   );

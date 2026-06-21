@@ -1,7 +1,19 @@
 // Central API service for VoiceFlow AI
 // All backend calls go through this file
 
-export const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080';
+export let BASE_URL = localStorage.getItem('voiceflow_api_url') || import.meta.env.VITE_API_URL || 'http://localhost:8080';
+
+export const setBaseUrl = (url) => {
+  if (url) {
+    const cleaned = url.endsWith('/') ? url.slice(0, -1) : url;
+    localStorage.setItem('voiceflow_api_url', cleaned);
+    BASE_URL = cleaned;
+  } else {
+    localStorage.removeItem('voiceflow_api_url');
+    BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080';
+  }
+  window.dispatchEvent(new Event('user_updated')); // Force layouts and status indicators to refresh
+};
 
 // ─── Token Helpers ────────────────────────────────────────────────────────────
 
