@@ -17,6 +17,66 @@ export default function Landing() {
     document.title = "VoiceFlow AI - Transform Text into Lifelike Speech";
   }, []);
 
+  // --- Cursor Tracking System ---
+  const handleCardMouseMove = (e) => {
+    const card = e.currentTarget;
+    const rect = card.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    card.style.setProperty('--mouse-x', `${x}px`);
+    card.style.setProperty('--mouse-y', `${y}px`);
+  };
+
+  // --- Interactive Slider Comparison State ---
+  const [sliderPos, setSliderPos] = useState(50);
+  const sliderContainerRef = useRef(null);
+  const [isSliderDragging, setIsSliderDragging] = useState(false);
+
+  const handleSliderMove = (clientX) => {
+    if (!sliderContainerRef.current) return;
+    const rect = sliderContainerRef.current.getBoundingClientRect();
+    const x = clientX - rect.left;
+    const percentage = Math.max(0, Math.min(100, (x / rect.width) * 100));
+    setSliderPos(percentage);
+  };
+
+  const handleTouchMoveSlider = (e) => {
+    if (e.touches && e.touches[0]) {
+      handleSliderMove(e.touches[0].clientX);
+    }
+  };
+
+  const handleMouseMoveSlider = (e) => {
+    if (isSliderDragging) {
+      handleSliderMove(e.clientX);
+    }
+  };
+
+  const handleMouseDownSlider = () => {
+    setIsSliderDragging(true);
+  };
+
+  useEffect(() => {
+    const handleGlobalMouseMove = (e) => {
+      if (isSliderDragging) {
+        handleSliderMove(e.clientX);
+      }
+    };
+    const handleGlobalMouseUp = () => {
+      setIsSliderDragging(false);
+    };
+
+    if (isSliderDragging) {
+      window.addEventListener('mousemove', handleGlobalMouseMove);
+      window.addEventListener('mouseup', handleGlobalMouseUp);
+    }
+
+    return () => {
+      window.removeEventListener('mousemove', handleGlobalMouseMove);
+      window.removeEventListener('mouseup', handleGlobalMouseUp);
+    };
+  }, [isSliderDragging]);
+
   // --- Auth & User State ---
   const [user, setUser] = useState(null);
   useEffect(() => {
@@ -748,7 +808,8 @@ export default function Landing() {
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
-            className="glow-card p-6 border border-white/5 flex flex-col justify-between items-center text-center relative overflow-hidden"
+            onMouseMove={handleCardMouseMove}
+            className="interactive-glow-card p-6 border border-white/5 flex flex-col justify-between items-center text-center relative overflow-hidden"
           >
             <div className="absolute top-0 left-0 w-2 h-2 bg-green-500 rounded-full m-3 animate-ping"></div>
             <div className="absolute top-0 left-0 w-2 h-2 bg-green-500 rounded-full m-3"></div>
@@ -764,7 +825,8 @@ export default function Landing() {
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ delay: 0.1 }}
-            className="glow-card p-6 border border-white/5 flex flex-col justify-between items-center text-center"
+            onMouseMove={handleCardMouseMove}
+            className="interactive-glow-card p-6 border border-white/5 flex flex-col justify-between items-center text-center"
           >
             <Zap size={20} className="text-yellow-500" />
             <div className="text-xl sm:text-2xl font-black text-white font-mono mt-2">
@@ -778,7 +840,8 @@ export default function Landing() {
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ delay: 0.2 }}
-            className="glow-card p-6 border border-white/5 flex flex-col justify-between items-center text-center"
+            onMouseMove={handleCardMouseMove}
+            className="interactive-glow-card p-6 border border-white/5 flex flex-col justify-between items-center text-center"
           >
             <Languages size={20} className="text-blue-400" />
             <div className="text-xl sm:text-2xl font-black text-white font-mono mt-2">
@@ -792,7 +855,8 @@ export default function Landing() {
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ delay: 0.3 }}
-            className="glow-card p-6 border border-white/5 flex flex-col justify-between items-center text-center"
+            onMouseMove={handleCardMouseMove}
+            className="interactive-glow-card p-6 border border-white/5 flex flex-col justify-between items-center text-center"
           >
             <Check size={20} className="text-green-400" />
             <div className="text-xl sm:text-2xl font-black text-white font-mono mt-2">
@@ -815,7 +879,8 @@ export default function Landing() {
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
           transition={{ duration: 0.6 }}
-          className="glow-card p-6 md:p-8 shadow-2xl relative overflow-hidden"
+          onMouseMove={handleCardMouseMove}
+          className="interactive-glow-card p-6 md:p-8 shadow-2xl relative overflow-hidden"
         >
           {/* Engine Mode Toggle */}
           <div className="flex justify-between items-center pb-4 mb-6 border-b border-white/5">
@@ -1013,92 +1078,60 @@ export default function Landing() {
           <span className="text-xs bg-secondary/15 text-secondary border border-secondary/25 px-3 py-1 rounded-full font-bold uppercase tracking-wider">
             Engine Duel
           </span>
-          <h2 className="text-3xl font-extrabold text-white mt-4 mb-3">Robotic vs. Lifelike Speech</h2>
-          <p className="text-gray-400 max-w-xl mx-auto">Compare legacy text-to-speech with VoiceFlow's hyper-realistic neural architecture.</p>
+          <h2 className="text-4xl font-extrabold text-white mt-4 mb-3 font-display tracking-tight">
+            Robotic vs. <span className="bg-clip-text text-transparent bg-gradient-to-r from-primary to-secondary">Lifelike</span> Speech
+          </h2>
+          <p className="text-gray-400 max-w-xl mx-auto">Compare legacy text-to-speech with VoiceFlow's hyper-realistic neural architecture using our interactive slider.</p>
         </div>
 
-        <div className="grid md:grid-cols-2 gap-8 items-stretch max-w-5xl mx-auto">
-          {/* Standard Card */}
-          <div className="bg-[#121217] rounded-2xl border border-white/5 p-6 md:p-8 flex flex-col justify-between relative overflow-hidden transition-all duration-300 hover:border-white/10 group">
-            <div>
-              <div className="flex items-center justify-between mb-6">
-                <div>
-                  <h3 className="text-lg font-bold text-gray-400">Legacy Standard TTS</h3>
-                  <p className="text-xs text-gray-600">Linear Wave Synthesis</p>
-                </div>
-                <span className="text-[10px] bg-white/5 border border-white/10 text-gray-500 px-2.5 py-1 rounded-full font-mono uppercase tracking-wider font-bold">
-                  Legacy
+        {/* Dynamic Split Screen Interactive Slider */}
+        <div 
+          ref={sliderContainerRef}
+          onMouseMove={handleMouseMoveSlider}
+          onTouchMove={handleTouchMoveSlider}
+          className="comparison-slider-container h-[420px] md:h-[360px] relative select-none cursor-ew-resize overflow-hidden"
+        >
+          {/* Right Side: Neural AI (Base Background layer - full width) */}
+          <div className="absolute inset-0 bg-gradient-to-br from-[#120f24] to-[#07060f] p-8 md:p-12 flex flex-col md:flex-row justify-between items-center gap-6">
+            <div className="max-w-md space-y-4 text-left z-10">
+              <div className="flex items-center gap-2">
+                <span className="text-xs bg-primary/20 text-primary border border-primary/30 px-3 py-1 rounded-full font-extrabold uppercase tracking-wider">
+                  Active Neural AI
                 </span>
+                <Sparkles size={16} className="text-secondary animate-pulse" />
               </div>
-              <p className="text-sm text-gray-500 leading-relaxed mb-6 font-sans">
-                "Warning. Standard synthesis active. Pacing vectors are linear. Pitch is flat and robotic."
-              </p>
-            </div>
-
-            <div className="space-y-6">
-              {/* Mechanical wave visualizer */}
-              <div className="h-14 bg-black/40 rounded-xl p-3.5 border border-white/5 flex items-center justify-center gap-1.5 overflow-hidden">
-                {playingCompare === 'standard' ? (
-                  [...Array(24)].map((_, i) => (
-                    <div 
-                      key={i} 
-                      className="w-1.5 bg-gray-600 rounded-full animate-flat-wave"
-                      style={{ height: '35%', animationDelay: `${i * 0.04}s` }}
-                    ></div>
-                  ))
-                ) : (
-                  <div className="h-0.5 w-full bg-white/5"></div>
-                )}
-              </div>
-
-              <button
-                onClick={() => handlePlayComparison('standard')}
-                className={`w-full py-3 rounded-xl font-bold text-sm flex items-center justify-center space-x-2 transition-all duration-300 ${
-                  playingCompare === 'standard'
-                    ? 'bg-red-500/10 text-red-500 border border-red-500/20 hover:bg-red-500/20'
-                    : 'bg-white/5 text-gray-400 border border-white/10 hover:bg-white/10 hover:text-white'
-                }`}
-              >
-                {playingCompare === 'standard' ? (
-                  <>
-                    <Square size={14} fill="currentColor" />
-                    <span>Stop Standard Audio</span>
-                  </>
-                ) : (
-                  <>
-                    <Play size={14} fill="currentColor" className="ml-0.5" />
-                    <span>Hear Standard TTS</span>
-                  </>
-                )}
-              </button>
-            </div>
-          </div>
-
-          {/* Neural Card */}
-          <div className="glow-card p-6 md:p-8 flex flex-col justify-between relative overflow-hidden border-2 border-primary/20 hover:border-primary/40 group">
-            {/* Ambient subtle glow background */}
-            <div className="absolute top-0 right-0 w-32 h-32 bg-primary/10 rounded-full blur-2xl group-hover:bg-primary/20 transition-colors"></div>
-            <div>
-              <div className="flex items-center justify-between mb-6">
-                <div>
-                  <h3 className="text-lg font-bold text-white flex items-center gap-2">
-                    <span>VoiceFlow Neural Engine</span>
-                    <Sparkles size={16} className="text-secondary animate-pulse" />
-                  </h3>
-                  <p className="text-xs text-primary/80 font-semibold uppercase tracking-wider">Deep Learning Vocoder</p>
-                </div>
-                <span className="text-[10px] bg-gradient-to-r from-primary to-secondary text-white px-2.5 py-1 rounded-full font-bold uppercase tracking-wider shadow-sm">
-                  Active AI
-                </span>
-              </div>
-              <p className="text-sm text-gray-300 leading-relaxed mb-6 font-sans">
+              <h3 className="text-2xl font-black text-white font-display">VoiceFlow Neural Engine</h3>
+              <p className="text-gray-300 text-sm md:text-base leading-relaxed">
                 "Hi! This is Emma, powered by VoiceFlow's next-gen neural engine. Notice how the pacing naturally slows down for emphasis, and the tone carries warm, human-like expression."
               </p>
+              <div className="pt-2">
+                <button
+                  onClick={() => handlePlayComparison('neural')}
+                  className={`px-6 py-2.5 rounded-xl font-bold text-sm flex items-center justify-center space-x-2 transition-all duration-300 ${
+                    playingCompare === 'neural'
+                      ? 'bg-red-500 text-white shadow-lg shadow-red-500/20'
+                      : 'bg-primary text-white hover:opacity-90 shadow-md shadow-primary/10'
+                  }`}
+                >
+                  {playingCompare === 'neural' ? (
+                    <>
+                      <Square size={14} fill="currentColor" />
+                      <span>Stop Neural Audio</span>
+                    </>
+                  ) : (
+                    <>
+                      <Play size={14} fill="currentColor" className="ml-0.5" />
+                      <span>Hear Neural Voice</span>
+                    </>
+                  )}
+                </button>
+              </div>
             </div>
 
-            <div className="space-y-6">
-              {/* Beautiful wave visualizer */}
-              <div className="h-14 bg-black/40 rounded-xl p-3.5 border border-white/5 flex items-center justify-center gap-1 overflow-hidden">
+            {/* Neural Waves graphics */}
+            <div className="w-full md:w-80 flex flex-col items-center justify-center space-y-4 bg-white/5 p-6 rounded-2xl border border-white/5 backdrop-blur-sm z-10 font-sans">
+              <span className="text-[10px] text-gray-500 font-mono tracking-widest uppercase">Deep Learning Vocoder Wave</span>
+              <div className="h-16 w-full flex items-end justify-center gap-1.5 overflow-hidden">
                 {playingCompare === 'neural' ? (
                   [...Array(24)].map((_, i) => (
                     <div 
@@ -1111,30 +1144,94 @@ export default function Landing() {
                     ></div>
                   ))
                 ) : (
-                  <div className="h-0.5 w-full bg-white/5"></div>
+                  [...Array(24)].map((_, i) => (
+                    <div 
+                      key={i} 
+                      className="w-1.5 bg-primary/20 rounded-full"
+                      style={{ height: `${20 + Math.sin(i * 0.2) * 15}%` }}
+                    ></div>
+                  ))
                 )}
               </div>
+              <span className="text-xs text-primary font-bold">48,000 Hz Studio Quality</span>
+            </div>
+          </div>
 
-              <button
-                onClick={() => handlePlayComparison('neural')}
-                className={`w-full py-3 rounded-xl font-bold text-sm flex items-center justify-center space-x-2 transition-all duration-300 ${
-                  playingCompare === 'neural'
-                    ? 'bg-red-500/10 text-red-500 border border-red-500/20 hover:bg-red-500/20'
-                    : 'bg-primary text-white hover:opacity-90 shadow-md shadow-primary/10'
-                }`}
-              >
-                {playingCompare === 'neural' ? (
-                  <>
-                    <Square size={14} fill="currentColor" />
-                    <span>Stop Neural Audio</span>
-                  </>
-                ) : (
-                  <>
-                    <Play size={14} fill="currentColor" className="ml-0.5" />
-                    <span>Hear Neural Voice</span>
-                  </>
-                )}
-              </button>
+          {/* Left Side: Legacy Standard (Overlay layer - width set by slider position) */}
+          <div 
+            className="absolute top-0 left-0 bottom-0 overflow-hidden bg-gradient-to-br from-[#121217] to-[#1a1a24] border-r border-white/10"
+            style={{ width: `${sliderPos}%` }}
+          >
+            {/* Absolute container matching parent width so children don't squeeze */}
+            <div className="absolute top-0 left-0 bottom-0 w-[100vw] max-w-[1200px] p-8 md:p-12 flex flex-col md:flex-row justify-between items-center gap-6" style={{ width: sliderContainerRef.current?.offsetWidth || '100vw' }}>
+              <div className="max-w-md space-y-4 text-left">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs bg-white/5 border border-white/10 text-gray-500 px-3 py-1 rounded-full font-mono uppercase tracking-wider font-bold">
+                    Legacy Codec
+                  </span>
+                </div>
+                <h3 className="text-2xl font-bold text-gray-400 font-display">Legacy Standard TTS</h3>
+                <p className="text-gray-500 text-sm md:text-base leading-relaxed">
+                  "Warning. Standard synthesis active. Pacing vectors are linear. Pitch is flat and robotic."
+                </p>
+                <div className="pt-2">
+                  <button
+                    onClick={() => handlePlayComparison('standard')}
+                    className={`px-6 py-2.5 rounded-xl font-bold text-sm flex items-center justify-center space-x-2 transition-all duration-300 ${
+                      playingCompare === 'standard'
+                        ? 'bg-red-500/20 text-red-400 border border-red-500/30'
+                        : 'bg-white/5 text-gray-400 border border-white/10 hover:bg-white/10 hover:text-white'
+                    }`}
+                  >
+                    {playingCompare === 'standard' ? (
+                      <>
+                        <Square size={14} fill="currentColor" />
+                        <span>Stop Standard Audio</span>
+                      </>
+                    ) : (
+                      <>
+                        <Play size={14} fill="currentColor" className="ml-0.5" />
+                        <span>Hear Standard TTS</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
+
+              {/* Standard waves graphics */}
+              <div className="w-full md:w-80 flex flex-col items-center justify-center space-y-4 bg-black/30 p-6 rounded-2xl border border-white/5 backdrop-blur-sm font-sans">
+                <span className="text-[10px] text-gray-600 font-mono tracking-widest uppercase">Linear Wave Synthesis</span>
+                <div className="h-16 w-full flex items-end justify-center gap-1.5 overflow-hidden">
+                  {playingCompare === 'standard' ? (
+                    [...Array(24)].map((_, i) => (
+                      <div 
+                        key={i} 
+                        className="w-1.5 bg-gray-600 rounded-full animate-flat-wave"
+                        style={{ height: '35%', animationDelay: `${i * 0.04}s` }}
+                      ></div>
+                    ))
+                  ) : (
+                    <div className="h-0.5 w-full bg-white/5 self-center"></div>
+                  )}
+                </div>
+                <span className="text-xs text-gray-500 font-medium">8,000 Hz Monotone</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Draggable Divider Handle */}
+          <div 
+            onMouseDown={handleMouseDownSlider}
+            onTouchStart={handleMouseDownSlider}
+            className="absolute top-0 bottom-0 w-1 bg-gradient-to-b from-primary via-secondary to-pink-500 flex items-center justify-center cursor-ew-resize z-20 shadow-[0_0_15px_rgba(168,85,247,0.5)]"
+            style={{ left: `${sliderPos}%`, transform: 'translateX(-50%)' }}
+          >
+            {/* Grab circles */}
+            <div className="w-9 h-9 rounded-full bg-[#13131a] border-2 border-secondary shadow-[0_0_20px_rgba(168,85,247,0.6)] flex flex-col gap-0.5 items-center justify-center hover:scale-110 active:scale-95 transition-transform select-none shrink-0">
+              <div className="flex gap-0.5">
+                <div className="w-1 h-3 bg-secondary rounded-full"></div>
+                <div className="w-1 h-3 bg-secondary rounded-full"></div>
+              </div>
             </div>
           </div>
         </div>
@@ -1190,7 +1287,8 @@ export default function Landing() {
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.95 }}
                 transition={{ duration: 0.3 }}
-                className={`glow-card p-5 border transition-all duration-300 relative ${
+                onMouseMove={handleCardMouseMove}
+                className={`interactive-glow-card p-5 border transition-all duration-300 relative ${
                   playingVoiceId === voice.id 
                     ? 'border-primary/50 shadow-lg shadow-primary/15'
                     : 'border-white/5'
@@ -1280,14 +1378,14 @@ export default function Landing() {
       {/* Bento Grid Feature Cards */}
       <section className="max-w-7xl mx-auto w-full px-4 py-16">
         <div className="text-center mb-12">
-          <h2 className="text-3xl font-bold text-white mb-3">Engineered for Quality</h2>
+          <h2 className="text-3xl font-bold text-white mb-3 font-display tracking-tight">Engineered for Quality</h2>
           <p className="text-gray-400 max-w-xl mx-auto">Advanced voice intelligence combined with professional utilities to accelerate your audio creation.</p>
         </div>
 
         {/* Bento Grid */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 auto-rows-[220px]">
           {/* Card 1: Large Box - Neural Synthesis */}
-          <div className="md:col-span-2 md:row-span-2 glow-card p-8 flex flex-col justify-between relative overflow-hidden group">
+          <div onMouseMove={handleCardMouseMove} className="md:col-span-2 md:row-span-2 interactive-glow-card p-8 flex flex-col justify-between relative overflow-hidden group">
             <div className="absolute top-0 right-0 w-64 h-64 bg-primary/10 rounded-full blur-[100px] pointer-events-none group-hover:bg-primary/20 transition-colors duration-500"></div>
             
             <div className="w-12 h-12 rounded-xl bg-primary/15 border border-primary/20 flex items-center justify-center text-primary mb-6 transition-transform group-hover:scale-110 duration-300">
@@ -1295,7 +1393,7 @@ export default function Landing() {
             </div>
 
             <div>
-              <h3 className="text-2xl font-bold text-white mb-3">Premium Neural Voice Synthesis</h3>
+              <h3 className="text-2xl font-bold text-white mb-3 font-display">Premium Neural Voice Synthesis</h3>
               <p className="text-gray-400 leading-relaxed max-w-xl">
                 Experience high-fidelity audio mapping that reproduces realistic voice inflections, phrasing pauses, and localized dialects. The neural AI model filters out mechanical clipping for perfectly clear WAV and MP3 files.
               </p>
@@ -1318,7 +1416,7 @@ export default function Landing() {
           </div>
 
           {/* Card 2: Regular Box - Languages */}
-          <div className="glow-card p-6 flex flex-col justify-between group">
+          <div onMouseMove={handleCardMouseMove} className="interactive-glow-card p-6 flex flex-col justify-between group">
             <div className="flex items-center justify-between">
               <div className="w-10 h-10 rounded-xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-purple-400 group-hover:rotate-12 transition-transform duration-300">
                 <Languages size={20} />
@@ -1327,7 +1425,7 @@ export default function Landing() {
             </div>
             
             <div>
-              <h3 className="text-lg font-bold text-white mb-2">Multilingual Support</h3>
+              <h3 className="text-lg font-bold text-white mb-2 font-display">Multilingual Support</h3>
               <p className="text-sm text-gray-400 leading-relaxed">
                 Generate high-quality voices natively in English, Sinhala, Tamil, and Hindi.
               </p>
@@ -1335,7 +1433,7 @@ export default function Landing() {
           </div>
 
           {/* Card 3: Regular Box - Control parameters */}
-          <div className="glow-card p-6 flex flex-col justify-between group">
+          <div onMouseMove={handleCardMouseMove} className="interactive-glow-card p-6 flex flex-col justify-between group">
             <div className="flex items-center justify-between">
               <div className="w-10 h-10 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-400 group-hover:scale-110 transition-transform duration-300">
                 <Settings2 size={20} />
@@ -1344,7 +1442,7 @@ export default function Landing() {
             </div>
 
             <div>
-              <h3 className="text-lg font-bold text-white mb-2">Fine-tune Controls</h3>
+              <h3 className="text-lg font-bold text-white mb-2 font-display">Fine-tune Controls</h3>
               <p className="text-sm text-gray-400 leading-relaxed">
                 Adjust speed rates and sound pitch keys. Sculpt standard voices to sound enthusiastic, calm, or quick.
               </p>
@@ -1352,7 +1450,7 @@ export default function Landing() {
           </div>
 
           {/* Card 4: Full Row on Mobile, 1 span in bento - Exports */}
-          <div className="glow-card p-6 flex flex-col justify-between group">
+          <div onMouseMove={handleCardMouseMove} className="interactive-glow-card p-6 flex flex-col justify-between group">
             <div className="flex items-center justify-between">
               <div className="w-10 h-10 rounded-xl bg-green-500/10 border border-green-500/20 flex items-center justify-center text-green-400 group-hover:translate-y-1 transition-transform duration-300">
                 <Download size={20} />
@@ -1361,7 +1459,7 @@ export default function Landing() {
             </div>
 
             <div>
-              <h3 className="text-lg font-bold text-white mb-2">Instant MP3 Export</h3>
+              <h3 className="text-lg font-bold text-white mb-2 font-display">Instant MP3 Export</h3>
               <p className="text-sm text-gray-400 leading-relaxed">
                 Render and download your files in high bitrate MP3 instantly. High-speed delivery straight to your browser downloads folder.
               </p>
@@ -1369,7 +1467,7 @@ export default function Landing() {
           </div>
 
           {/* Card 5: Large Box - Dashboard Mockup Details */}
-          <div className="md:col-span-2 glow-card p-6 flex flex-col justify-between group relative overflow-hidden">
+          <div onMouseMove={handleCardMouseMove} className="md:col-span-2 interactive-glow-card p-6 flex flex-col justify-between group relative overflow-hidden">
             <div className="absolute top-0 right-0 w-32 h-32 bg-secondary/15 rounded-full blur-[80px] pointer-events-none"></div>
             
             <div className="flex items-center justify-between mb-4">
@@ -1380,7 +1478,7 @@ export default function Landing() {
             </div>
 
             <div>
-              <h3 className="text-lg font-bold text-white mb-2">Secure History & Dashboard management</h3>
+              <h3 className="text-lg font-bold text-white mb-2 font-display">Secure History & Dashboard management</h3>
               <p className="text-sm text-gray-400 leading-relaxed max-w-xl">
                 Every file generated is cataloged in your user database. Never lose track of your work. Copy, download, or review your audio log histories anytime, anywhere, with an administration control interface.
               </p>
@@ -1438,7 +1536,7 @@ export default function Landing() {
 
           {/* Right Column: Visual Stage Detail Card */}
           <div className="lg:col-span-7">
-            <div className="glow-card p-6 md:p-8 min-h-[420px] flex flex-col justify-between border border-white/5 relative">
+            <div onMouseMove={handleCardMouseMove} className="interactive-glow-card p-6 md:p-8 min-h-[420px] flex flex-col justify-between border border-white/5 relative">
               <div className="absolute inset-0 pointer-events-none shimmer-effect opacity-5"></div>
               
               {/* Dynamic Interactive Panel */}
@@ -1454,62 +1552,102 @@ export default function Landing() {
 
                 {activeStage === 0 && (
                   <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
-                    <h3 className="text-xl font-bold text-white flex items-center gap-2">
-                      <Zap size={20} className="text-primary" />
+                    <h3 className="text-xl font-bold text-white flex items-center gap-2 font-display">
+                      <Zap size={20} className="text-primary animate-pulse" />
                       Text Normalization & Prep
                     </h3>
                     <p className="text-sm text-gray-400 leading-relaxed">
                       First, the raw text script is normalized. The engine identifies abbreviation markers, symbol structures, phone numbers, and numbers, expanding them to full spoken words.
                     </p>
                     
-                    <div className="bg-black/35 rounded-xl border border-white/5 p-4 space-y-3 font-mono text-xs text-left">
-                      <div className="text-gray-500">&gt; Input Script:</div>
-                      <div className="text-red-400 pl-4 bg-red-500/5 py-1 rounded">"Launch v3.0 on 2026-06-15 at $15."</div>
-                      <div className="text-gray-500 mt-2">&gt; Normalized Output:</div>
-                      <div className="text-green-400 pl-4 bg-green-500/5 py-1 rounded">"Launch version three point zero on June fifteenth twenty twenty-six at fifteen dollars."</div>
+                    <div className="bg-black/35 rounded-xl border border-white/5 p-4 space-y-3 font-mono text-xs text-left relative overflow-hidden">
+                      <div className="absolute top-0 left-0 w-full h-[2px] bg-gradient-to-r from-transparent via-primary to-transparent animate-pipeline-flow"></div>
+                      <div className="text-gray-500 flex justify-between">
+                        <span>&gt; Input Script</span>
+                        <span className="text-[9px] bg-red-500/10 text-red-400 px-1.5 py-0.5 rounded font-sans uppercase font-bold">Raw Text</span>
+                      </div>
+                      <div className="text-red-400 pl-4 bg-red-500/5 py-2.5 rounded border border-red-500/10 relative">
+                        <span className="animate-pulse">"Launch v3.0 on 2026-06-15 at $15."</span>
+                      </div>
+                      <div className="text-gray-500 mt-2 flex justify-between">
+                        <span>&gt; Normalized Output</span>
+                        <span className="text-[9px] bg-green-500/10 text-green-400 px-1.5 py-0.5 rounded font-sans uppercase font-bold">Expanded Words</span>
+                      </div>
+                      <div className="text-green-400 pl-4 bg-green-500/5 py-2.5 rounded border border-green-500/10 relative">
+                        <span>"Launch version <span className="text-white underline decoration-wavy decoration-primary font-bold">three point zero</span> on <span className="text-white underline decoration-wavy decoration-primary font-bold">June fifteenth twenty twenty-six</span> at <span className="text-white underline decoration-wavy decoration-primary font-bold">fifteen dollars</span>."</span>
+                      </div>
                     </div>
                   </motion.div>
                 )}
 
                 {activeStage === 1 && (
                   <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
-                    <h3 className="text-xl font-bold text-white flex items-center gap-2">
-                      <Languages size={20} className="text-secondary" />
+                    <h3 className="text-xl font-bold text-white flex items-center gap-2 font-display">
+                      <Languages size={20} className="text-secondary animate-pulse" />
                       Phonetic Mapping & Accent Analysis
                     </h3>
                     <p className="text-sm text-gray-400 leading-relaxed">
                       The normalized words are converted into linguistic phoneme codes, defining word stresses, sentence breaks, and dialect accents (e.g. US vs UK English, or Sinhala syllables).
                     </p>
                     
-                    <div className="bg-black/35 rounded-xl border border-white/5 p-4 space-y-3 font-mono text-xs text-left">
-                      <div className="text-gray-500">&gt; Text Phrase:</div>
-                      <div className="text-gray-300 pl-4 bg-white/5 py-1 rounded">"VoiceFlow Engine"</div>
-                      <div className="text-gray-500 mt-2">&gt; Phoneme Representation:</div>
-                      <div className="text-secondary pl-4 bg-secondary/5 py-1 rounded">/vɔɪs/ /floʊ/ /ˈɛn.dʒɪn/</div>
-                      <div className="text-gray-500 mt-2">&gt; Syllable Stress Map:</div>
-                      <div className="text-primary pl-4 bg-primary/5 py-1 rounded">[Primary Stress: "Voice", "En"]</div>
+                    <div className="bg-black/35 rounded-xl border border-white/5 p-4 space-y-3 font-mono text-xs text-left relative overflow-hidden">
+                      <div className="absolute top-0 left-0 w-full h-[2px] bg-gradient-to-r from-transparent via-secondary to-transparent animate-pipeline-flow"></div>
+                      <div className="text-gray-500 flex justify-between">
+                        <span>&gt; Text Phrase</span>
+                        <span className="text-[9px] bg-white/10 text-gray-300 px-1.5 py-0.5 rounded font-sans uppercase font-bold">Syllables</span>
+                      </div>
+                      <div className="text-gray-300 pl-4 bg-white/5 py-2 rounded">"VoiceFlow Engine"</div>
+                      <div className="text-gray-500 mt-2 flex justify-between">
+                        <span>&gt; Phoneme Representation</span>
+                        <span className="text-[9px] bg-secondary/15 text-secondary px-1.5 py-0.5 rounded font-sans uppercase font-bold">IPA Format</span>
+                      </div>
+                      <div className="text-secondary pl-4 bg-secondary/5 py-2.5 rounded border border-secondary/10 flex gap-2">
+                        <span className="bg-secondary/10 px-1.5 py-0.5 rounded font-bold">/vɔɪs/</span>
+                        <span className="bg-secondary/10 px-1.5 py-0.5 rounded font-bold">/floʊ/</span>
+                        <span className="bg-secondary/10 px-1.5 py-0.5 rounded font-bold">/ˈɛn.dʒɪn/</span>
+                      </div>
+                      <div className="text-gray-500 mt-2 flex justify-between">
+                        <span>&gt; Syllable Stress Map</span>
+                        <span className="text-[9px] bg-primary/10 text-primary px-1.5 py-0.5 rounded font-sans uppercase font-bold">Acoustic Emphasis</span>
+                      </div>
+                      <div className="text-primary pl-4 bg-primary/5 py-2.5 rounded border border-primary/10 flex gap-3 items-center">
+                        <span>[Primary Stresses]</span>
+                        <div className="flex gap-1.5 font-sans">
+                          <span className="bg-primary text-white text-[9px] px-2 py-0.5 rounded font-extrabold uppercase animate-pulse">VOICE</span>
+                          <span className="bg-primary text-white text-[9px] px-2 py-0.5 rounded font-extrabold uppercase animate-pulse">EN</span>
+                        </div>
+                      </div>
                     </div>
                   </motion.div>
                 )}
 
                 {activeStage === 2 && (
                   <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
-                    <h3 className="text-xl font-bold text-white flex items-center gap-2">
-                      <Settings2 size={20} className="text-blue-400" />
+                    <h3 className="text-xl font-bold text-white flex items-center gap-2 font-display">
+                      <Settings2 size={20} className="text-blue-400 animate-pulse" />
                       Acoustic Feature Extraction
                     </h3>
                     <p className="text-sm text-gray-400 leading-relaxed">
                       The phoneme strings are parsed by a neural acoustic model, mapping exact speech frequencies, volume inflections, and emotional characteristics into a complex Mel-spectrogram map.
                     </p>
                     
-                    <div className="bg-black/35 rounded-xl border border-white/5 p-4 space-y-2 text-left">
-                      <div className="text-xs font-mono text-gray-500 mb-2">&gt; Synthesizing Mel-Spectrogram Matrix (80 Frequency Channels):</div>
-                      <div className="grid grid-cols-8 gap-1 h-20 items-end bg-black/20 p-2 rounded border border-white/5">
-                        {[50, 80, 20, 90, 60, 40, 75, 10, 85, 30, 95, 65, 45, 70, 15, 80, 55, 35, 90, 60, 40, 75, 20, 85].map((val, idx) => (
+                    <div className="bg-black/35 rounded-xl border border-white/5 p-4 space-y-2 text-left relative overflow-hidden">
+                      <div className="absolute top-0 left-0 w-full h-[2px] bg-gradient-to-r from-transparent via-blue-500 to-transparent animate-pipeline-flow"></div>
+                      <div className="text-xs font-mono text-gray-500 mb-2 flex justify-between">
+                        <span>&gt; Synthesizing Mel-Spectrogram Matrix (80 Frequency Channels)</span>
+                        <span className="text-[9px] bg-blue-500/15 text-blue-400 px-1.5 py-0.5 rounded font-sans uppercase font-bold">Neural Spectrum</span>
+                      </div>
+                      <div className="grid grid-cols-12 gap-1 h-24 items-end bg-black/40 p-3 rounded-xl border border-white/5 relative overflow-hidden">
+                        <div className="absolute inset-0 bg-[linear-gradient(to_bottom,transparent_90%,rgba(99,102,241,0.05)_90%)] bg-[size:100%_8px] pointer-events-none"></div>
+                        {[55, 85, 25, 95, 65, 45, 80, 15, 90, 35, 95, 70, 50, 75, 20, 85, 60, 40, 95, 65, 45, 80, 25, 90].map((val, idx) => (
                           <div
                             key={idx}
-                            className="bg-gradient-to-t from-blue-500/20 to-primary/80 rounded-sm w-full"
-                            style={{ height: `${val}%` }}
+                            className="bg-gradient-to-t from-blue-500/20 via-primary/75 to-secondary rounded-sm w-full animate-wave-bar"
+                            style={{ 
+                              height: `${val}%`,
+                              animationDelay: `${idx * 0.04}s`,
+                              animationDuration: `${0.8 + (idx % 3) * 0.2}s`
+                            }}
                           ></div>
                         ))}
                       </div>
@@ -1524,31 +1662,38 @@ export default function Landing() {
 
                 {activeStage === 3 && (
                   <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
-                    <h3 className="text-xl font-bold text-white flex items-center gap-2">
-                      <Cpu size={20} className="text-green-400" />
+                    <h3 className="text-xl font-bold text-white flex items-center gap-2 font-display">
+                      <Cpu size={20} className="text-green-400 animate-pulse" />
                       Neural Vocoding Wave Output
                     </h3>
                     <p className="text-sm text-gray-400 leading-relaxed">
                       Finally, the GPU neural vocoder acts on the Mel-spectrogram, predicting phase relationships and reconstructing standard high-fidelity audio output sampled at 48kHz.
                     </p>
                     
-                    <div className="bg-black/35 rounded-xl border border-white/5 p-4 text-left">
-                      <div className="text-xs font-mono text-gray-500 mb-2">&gt; Reconstructed Waveform:</div>
-                      <div className="h-16 flex items-center justify-center bg-black/20 rounded border border-white/5 relative overflow-hidden">
+                    <div className="bg-black/35 rounded-xl border border-white/5 p-4 text-left relative overflow-hidden">
+                      <div className="absolute top-0 left-0 w-full h-[2px] bg-gradient-to-r from-transparent via-green-400 to-transparent animate-pipeline-flow"></div>
+                      <div className="text-xs font-mono text-gray-500 mb-2 flex justify-between">
+                        <span>&gt; Reconstructed Waveform</span>
+                        <span className="text-[9px] bg-green-500/15 text-green-400 px-1.5 py-0.5 rounded font-sans uppercase font-bold">Vocoder Output</span>
+                      </div>
+                      <div className="h-16 flex items-center justify-center bg-black/40 rounded-xl border border-white/5 relative overflow-hidden">
                         {/* Dynamic pipeline wave animation */}
                         <div className="absolute inset-0 flex items-center justify-center opacity-30">
                           {[...Array(60)].map((_, i) => (
                             <div
                               key={i}
-                              className="w-1 bg-gradient-to-y from-green-400 to-primary rounded-full mx-[1px]"
+                              className="w-1 bg-gradient-to-y from-green-400 via-secondary to-primary rounded-full mx-[1px] animate-wave-bar"
                               style={{
-                                height: `${20 + Math.sin(i * 0.4) * 60}%`,
+                                height: `${25 + Math.sin(i * 0.4) * 60}%`,
+                                animationDelay: `${i * 0.02}s`,
+                                animationDuration: '1.1s'
                               }}
                             ></div>
                           ))}
                         </div>
-                        <div className="z-10 text-[10px] font-mono text-green-400 bg-black/50 px-2.5 py-1 rounded-full border border-green-500/20 animate-pulse">
-                          WAV File Output Sample Ready: 48,000 Hz
+                        <div className="z-10 text-[10px] font-mono text-green-400 bg-black/60 px-3.5 py-1.5 rounded-full border border-green-500/30 animate-pulse flex items-center gap-1.5 shadow-lg shadow-green-500/10">
+                          <Volume2 size={12} className="text-green-400 animate-bounce" />
+                          <span>WAV File Output Sample Ready: 48,000 Hz</span>
                         </div>
                       </div>
                     </div>
@@ -1637,7 +1782,7 @@ export default function Landing() {
           <p className="text-gray-400 max-w-xl mx-auto">Hear how podcasters, course authors, and developers save hundreds of hours with VoiceFlow.</p>
         </div>
         <div className="grid md:grid-cols-3 gap-6">
-          <div className="glow-card p-6 flex flex-col justify-between">
+          <div onMouseMove={handleCardMouseMove} className="interactive-glow-card p-6 flex flex-col justify-between">
             <p className="text-gray-300 text-sm leading-relaxed italic">
               "The Sinhala and Tamil natural engines are mind-blowing. Our e-learning courses feel completely native and clear now."
             </p>
@@ -1651,7 +1796,7 @@ export default function Landing() {
               </div>
             </div>
           </div>
-          <div className="glow-card p-6 flex flex-col justify-between border-primary/20">
+          <div onMouseMove={handleCardMouseMove} className="interactive-glow-card p-6 flex flex-col justify-between border-primary/20">
             <p className="text-gray-300 text-sm leading-relaxed italic">
               "We synthesize hours of audiobook content daily. The speed customization and WAV export saves us a massive amount of post-production work."
             </p>
@@ -1665,7 +1810,7 @@ export default function Landing() {
               </div>
             </div>
           </div>
-          <div className="glow-card p-6 flex flex-col justify-between">
+          <div onMouseMove={handleCardMouseMove} className="interactive-glow-card p-6 flex flex-col justify-between">
             <p className="text-gray-300 text-sm leading-relaxed italic">
               "Setting up the API took less than 15 minutes. High bitrate MP3 outputs stream instantly to our customer dashboard."
             </p>
@@ -1762,11 +1907,11 @@ export default function Landing() {
         {/* Pricing Cards Grid */}
         <div className="grid md:grid-cols-3 gap-8 items-stretch">
           {/* Free Plan */}
-          <div className={`glow-card p-8 flex flex-col justify-between relative border transition-all duration-300 ${
+          <div onMouseMove={handleCardMouseMove} className={`interactive-glow-card p-8 flex flex-col justify-between relative border transition-all duration-300 ${
             priceSliderVal <= 1 ? 'border-primary shadow-xl shadow-primary/5 scale-[1.02] opacity-100' : 'border-white/5 opacity-50 hover:opacity-80'
           }`}>
             <div>
-              <h3 className="text-lg font-bold text-gray-300 mb-2">Free Starter</h3>
+              <h3 className="text-lg font-bold text-gray-300 mb-2 font-display">Free Starter</h3>
               <p className="text-xs text-gray-500 mb-6">Perfect for evaluating speech quality.</p>
               
               <div className="mb-6 flex items-baseline gap-1">
@@ -1810,7 +1955,7 @@ export default function Landing() {
           </div>
 
           {/* Pro Plan (Glowing/Popular) */}
-          <div className={`glow-card p-8 border-2 flex flex-col justify-between relative shadow-xl transition-all duration-300 ${
+          <div onMouseMove={handleCardMouseMove} className={`interactive-glow-card p-8 border-2 flex flex-col justify-between relative shadow-xl transition-all duration-300 ${
             priceSliderVal === 2 || priceSliderVal === 3
               ? 'border-primary bg-gradient-to-b from-primary/5 to-surface/60 shadow-primary/10 scale-[1.02] opacity-100'
               : 'border-white/5 opacity-50 hover:opacity-80'
@@ -1820,7 +1965,7 @@ export default function Landing() {
             </span>
 
             <div>
-              <h3 className="text-lg font-bold text-white mb-2">Professional</h3>
+              <h3 className="text-lg font-bold text-white mb-2 font-display">Professional</h3>
               <p className="text-xs text-gray-400 mb-6">Ideal for video creators and publishers.</p>
 
               <div className="mb-6 flex items-baseline gap-1">
@@ -1865,11 +2010,11 @@ export default function Landing() {
           </div>
 
           {/* Enterprise Plan */}
-          <div className={`glow-card p-8 flex flex-col justify-between relative border transition-all duration-300 ${
+          <div onMouseMove={handleCardMouseMove} className={`interactive-glow-card p-8 flex flex-col justify-between relative border transition-all duration-300 ${
             priceSliderVal >= 4 ? 'border-primary shadow-xl shadow-primary/5 scale-[1.02] opacity-100' : 'border-white/5 opacity-50 hover:opacity-80'
           }`}>
             <div>
-              <h3 className="text-lg font-bold text-gray-300 mb-2">Enterprise</h3>
+              <h3 className="text-lg font-bold text-gray-300 mb-2 font-display">Enterprise</h3>
               <p className="text-xs text-gray-500 mb-6">Custom scaling for production apps.</p>
 
               <div className="mb-6 flex items-baseline gap-1">
@@ -2025,7 +2170,8 @@ export default function Landing() {
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -10 }}
-                className="glow-card border border-white/5 overflow-hidden transition-all duration-300"
+                onMouseMove={handleCardMouseMove}
+                className="interactive-glow-card border border-white/5 overflow-hidden transition-all duration-300"
               >
                 <button
                   id={`faq-btn-${index}`}

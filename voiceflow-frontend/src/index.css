@@ -294,3 +294,92 @@
   animation: gradient-shift 10s ease infinite;
 }
 
+/* --- Interactive Card Glow System --- */
+.interactive-glow-card {
+  position: relative;
+  background: rgba(19, 19, 26, 0.45);
+  backdrop-filter: blur(16px);
+  border-radius: 1rem;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.03);
+  transition: transform 0.3s cubic-bezier(0.25, 0.8, 0.25, 1), box-shadow 0.3s ease;
+}
+
+.interactive-glow-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  border-radius: inherit;
+  padding: 1.5px;
+  background: radial-gradient(
+    400px circle at var(--mouse-x, 0px) var(--mouse-y, 0px),
+    rgba(168, 85, 247, 0.45),
+    rgba(99, 102, 241, 0.25) 50%,
+    transparent 100%
+  );
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.4s ease;
+}
+
+.interactive-glow-card:hover::before {
+  opacity: 1;
+}
+
+.interactive-glow-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 20px 40px -20px rgba(99, 102, 241, 0.3), 0 0 30px 0 rgba(168, 85, 247, 0.05);
+}
+
+.interactive-glow-card::after {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  border-radius: inherit;
+  background: radial-gradient(
+    600px circle at var(--mouse-x, 0px) var(--mouse-y, 0px),
+    rgba(168, 85, 247, 0.06),
+    transparent 40%
+  );
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.4s ease;
+}
+
+.interactive-glow-card:hover::after {
+  opacity: 1;
+}
+
+/* --- Split Comparison System --- */
+.comparison-slider-container {
+  position: relative;
+  width: 100%;
+  overflow: hidden;
+  border-radius: 1.5rem;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: #0a0a0f;
+  box-shadow: 0 25px 60px -15px rgba(0, 0, 0, 0.6);
+}
+
+.comparison-panel {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+/* Custom Visualizer Animations */
+@keyframes siri-pulse {
+  0%, 100% { transform: scale(1); filter: brightness(1); }
+  50% { transform: scale(1.05); filter: brightness(1.2); }
+}
+.animate-siri-pulse {
+  animation: siri-pulse 4s ease-in-out infinite;
+}
+
+
