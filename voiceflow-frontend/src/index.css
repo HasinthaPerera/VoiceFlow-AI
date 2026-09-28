@@ -5,35 +5,41 @@
 :root {
   --color-primary-rgb: 99 102 241;
   --color-secondary-rgb: 168 85 247;
+  --color-accent-rgb: 236 72 153;
 }
 
 @layer base {
   body {
-    @apply bg-background text-white antialiased;
+    @apply bg-background text-white antialiased selection:bg-primary/30 selection:text-white;
   }
 }
 
 @layer components {
   .glass-panel {
-    @apply bg-surface/50 backdrop-blur-xl border border-white/5 rounded-2xl shadow-xl;
+    @apply bg-surface/50 backdrop-blur-xl border border-white/5 rounded-2xl shadow-xl transition-all duration-300;
   }
   
+  .glass-panel-heavy {
+    @apply bg-[rgba(15,15,25,0.75)] backdrop-blur-[24px] border border-white/[0.08] shadow-[0_20px_40px_-15px_rgba(0,0,0,0.5)] rounded-2xl transition-all duration-300;
+  }
+
   .input-field {
-    @apply w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all duration-300;
+    @apply w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2.5 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all duration-300;
   }
   
   .btn-primary {
-    @apply px-6 py-2 bg-gradient-to-r from-primary to-secondary text-white rounded-lg font-medium hover:opacity-90 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-primary/20;
+    @apply px-6 py-2.5 bg-gradient-to-r from-primary to-secondary text-white rounded-lg font-medium hover:opacity-90 active:scale-[0.98] transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100 shadow-lg shadow-primary/20 cursor-pointer;
   }
 
   .btn-secondary {
-    @apply px-6 py-2 bg-white/5 hover:bg-white/10 text-white rounded-lg font-medium transition-all duration-300 border border-white/10;
+    @apply px-6 py-2.5 bg-white/5 hover:bg-white/10 text-white rounded-lg font-medium transition-all duration-300 border border-white/10 active:scale-[0.98] cursor-pointer;
   }
 }
 
 /* Custom Scrollbar */
 ::-webkit-scrollbar {
   width: 8px;
+  height: 8px;
 }
 
 ::-webkit-scrollbar-track {
@@ -118,7 +124,7 @@
   background: rgba(19, 19, 26, 0.6);
   border-radius: 1rem;
   overflow: hidden;
-  transition: all 0.3s ease;
+  transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
 }
 
 .glow-card::before {
@@ -143,8 +149,8 @@
 }
 
 .glow-card:hover {
-  box-shadow: 0 10px 30px -10px rgba(99, 102, 241, 0.3);
-  transform: translateY(-2px);
+  box-shadow: 0 12px 35px -10px rgba(99, 102, 241, 0.35);
+  transform: translateY(-3px);
 }
 
 /* Particle Background dots */
@@ -194,6 +200,11 @@
 /* Shimmer overlay effect */
 @keyframes shimmer {
   100% { transform: translateX(100%); }
+}
+
+.shimmer-effect {
+  position: relative;
+  overflow: hidden;
 }
 
 .shimmer-effect::after {
@@ -264,13 +275,6 @@
   background: linear-gradient(135deg, #6366f1 0%, #a855f7 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
-}
-
-.glass-panel-heavy {
-  background: rgba(15, 15, 25, 0.75);
-  backdrop-filter: blur(24px);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.5);
 }
 
 .grid-glow-blob {
@@ -382,4 +386,17 @@
   animation: siri-pulse 4s ease-in-out infinite;
 }
 
-
+/* --- New Futuristic Cyber Badge / Highlight Effect --- */
+.cyber-badge {
+  position: relative;
+  background: rgba(99, 102, 241, 0.1);
+  border: 1px solid rgba(99, 102, 241, 0.3);
+  backdrop-filter: blur(8px);
+  border-radius: 9999px;
+  padding: 0.25rem 0.75rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  letter-spacing: 0.05em;
+  color: #818cf8;
+  box-shadow: inset 0 0 12px rgba(99, 102, 241, 0.15);
+}
