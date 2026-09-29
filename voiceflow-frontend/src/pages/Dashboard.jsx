@@ -646,21 +646,21 @@ export default function Dashboard() {
   return (
     <div className="space-y-8 pb-12">
       {/* Time-of-Day Greeting Banner */}
-      <div className="relative overflow-hidden rounded-2xl border border-white/5 bg-gradient-to-r from-surface via-surface to-primary/5 p-6 sm:p-8">
+      <div className="relative overflow-hidden rounded-2xl border border-white/5 bg-gradient-to-r from-surface via-surface to-primary/5 p-6 sm:p-8 shimmer-effect">
         <div className="absolute top-0 right-0 w-80 h-80 bg-gradient-to-br from-primary/10 via-secondary/5 to-transparent rounded-full blur-3xl -z-10"></div>
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
           <div>
-            <div className="flex items-center gap-2 mb-2">
-              <span className="text-xs font-bold font-mono tracking-wider text-primary uppercase bg-primary/10 px-2.5 py-1 rounded-full">
+            <div className="flex items-center gap-2 mb-3">
+              <span className="cyber-badge">
                 Active Session
               </span>
-              <div className="flex items-center space-x-1 text-xs text-gray-400 bg-white/5 px-2.5 py-1 rounded-full">
+              <div className="flex items-center space-x-1 text-xs text-gray-400 bg-white/5 px-2.5 py-1 rounded-full border border-white/5">
                 <Sparkles size={12} className="text-secondary animate-pulse" />
                 <span>Premium Tier</span>
               </div>
             </div>
             <h1 className="text-3xl font-extrabold text-white tracking-tight">
-              {getGreeting()}, {user?.name || 'Creator'}!
+              {getGreeting()}, <span className="text-gradient-indigo">{user?.name || 'Creator'}</span>!
             </h1>
             <p className="text-gray-400 mt-2 max-w-xl text-sm leading-relaxed">
               Your voice model clusters are online and optimized. You have <strong className="text-white font-semibold font-mono">{remainingChars.toLocaleString()}</strong> characters remaining, which is equivalent to approximately <strong className="text-primary font-bold font-mono">{estimatedRemainingMinutes} mins</strong> of high-quality speech generation.
@@ -669,7 +669,7 @@ export default function Dashboard() {
           <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
             <Link 
               to="/dashboard/generate" 
-              className="flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-gradient-to-r from-primary to-secondary hover:opacity-95 text-white font-semibold transition-all duration-300 shadow-lg shadow-primary/20 hover:shadow-primary/30"
+              className="flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-primary to-secondary hover:opacity-95 text-white font-semibold transition-all duration-300 shadow-lg shadow-primary/20 hover:shadow-primary/30 cursor-pointer active:scale-[0.98]"
             >
               <Mic2 size={16} />
               <span>Create Voice</span>
@@ -680,7 +680,7 @@ export default function Dashboard() {
 
       {/* Stats Grid */}
       {loading ? (
-        <div className="flex items-center text-gray-400 gap-3 py-6 justify-center">
+        <div className="flex items-center text-gray-400 gap-3 py-12 justify-center">
           <Loader2 className="animate-spin text-primary" size={24} />
           <span className="font-medium">Loading synthetic diagnostics...</span>
         </div>
@@ -751,7 +751,7 @@ export default function Dashboard() {
                   <button
                     key={type.id}
                     onClick={() => setChartType(type.id)}
-                    className={`text-[10px] uppercase font-bold tracking-wider px-2.5 py-1.5 rounded-md transition-all ${
+                    className={`text-[10px] uppercase font-bold tracking-wider px-2.5 py-1.5 rounded-md transition-all cursor-pointer ${
                       chartType === type.id
                         ? 'bg-white/10 text-white shadow-sm'
                         : 'text-gray-400 hover:text-white'
@@ -774,7 +774,7 @@ export default function Dashboard() {
                       setActiveRange(range.id);
                       setHoveredPoint(null);
                     }}
-                    className={`text-[10px] uppercase font-bold tracking-wider px-2.5 py-1.5 rounded-md transition-all ${
+                    className={`text-[10px] uppercase font-bold tracking-wider px-2.5 py-1.5 rounded-md transition-all cursor-pointer ${
                       activeRange === range.id
                         ? 'bg-white/10 text-white shadow-sm'
                         : 'text-gray-400 hover:text-white'
@@ -798,7 +798,7 @@ export default function Dashboard() {
                       setActiveMetric(m.id);
                       setHoveredPoint(null);
                     }}
-                    className={`text-[10px] uppercase font-bold tracking-wider px-2.5 py-1.5 rounded-md transition-all ${
+                    className={`text-[10px] uppercase font-bold tracking-wider px-2.5 py-1.5 rounded-md transition-all cursor-pointer ${
                       activeMetric === m.id
                         ? 'bg-primary text-white shadow shadow-primary/10'
                         : 'text-gray-400 hover:text-white'
@@ -812,7 +812,7 @@ export default function Dashboard() {
               {/* Export SVG Button */}
               <button
                 onClick={handleExportSVG}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary/10 border border-primary/20 hover:bg-primary/20 text-primary text-[10px] uppercase tracking-wider font-bold transition-all shadow-sm shadow-primary/5"
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary/10 border border-primary/20 hover:bg-primary/20 text-primary text-[10px] uppercase tracking-wider font-bold transition-all shadow-sm shadow-primary/5 cursor-pointer"
                 title="Export Chart as SVG"
               >
                 <Download size={11} />
@@ -941,7 +941,6 @@ export default function Dashboard() {
             {/* Axis labels spacing */}
             <div className="flex justify-between text-[10px] text-gray-500 font-bold font-mono px-1">
               {points.map((p, i) => {
-                // Determine whether to display label based on range density
                 const shouldShowLabel = activeRange === '7d' || i % 5 === 0 || i === points.length - 1;
                 return (
                   <div key={i} className="text-center w-12 flex-shrink-0">
@@ -1026,7 +1025,7 @@ export default function Dashboard() {
                 value={sandboxText}
                 onChange={(e) => setSandboxText(e.target.value.slice(0, 150))}
                 placeholder="Type a word or sentence to speak..."
-                className="w-full bg-black/35 border border-white/10 rounded-xl p-3 text-sm text-gray-200 placeholder-gray-600 focus:outline-none focus:ring-1 focus:ring-primary/50 resize-none h-20"
+                className="input-field resize-none h-20 text-sm"
                 maxLength={150}
               />
               <div className="flex justify-between items-center text-[10px] text-gray-500 font-mono -mt-2">
@@ -1039,7 +1038,7 @@ export default function Dashboard() {
                   <select
                     value={sandboxLang}
                     onChange={(e) => setSandboxLang(e.target.value)}
-                    className="w-full bg-white/5 border border-white/10 rounded-lg px-2.5 py-1.5 text-xs text-gray-300 focus:outline-none bg-[#13131a]"
+                    className="w-full bg-white/5 border border-white/10 rounded-lg px-2.5 py-1.5 text-xs text-gray-300 focus:outline-none bg-[#13131a] cursor-pointer"
                   >
                     <option value="english">🇺🇸 English</option>
                     <option value="sinhala">🇱🇰 Sinhala</option>
@@ -1052,7 +1051,7 @@ export default function Dashboard() {
                   <select
                     value={sandboxVoice}
                     onChange={(e) => setSandboxVoice(e.target.value)}
-                    className="w-full bg-white/5 border border-white/10 rounded-lg px-2.5 py-1.5 text-xs text-gray-300 focus:outline-none bg-[#13131a]"
+                    className="w-full bg-white/5 border border-white/10 rounded-lg px-2.5 py-1.5 text-xs text-gray-300 focus:outline-none bg-[#13131a] cursor-pointer"
                   >
                     <option value="natural">Natural AI</option>
                     <option value="male">Std Male</option>
@@ -1063,7 +1062,7 @@ export default function Dashboard() {
               <button
                 onClick={toggleSandboxPlay}
                 disabled={isSandboxGenerating}
-                className={`w-full py-2.5 rounded-xl font-semibold text-xs flex items-center justify-center space-x-2 transition-all duration-300 shadow-md ${
+                className={`w-full py-2.5 rounded-xl font-semibold text-xs flex items-center justify-center space-x-2 transition-all duration-300 shadow-md cursor-pointer ${
                   isSandboxPlaying
                     ? 'bg-red-500/20 text-red-400 border border-red-500/30 hover:bg-red-500/30'
                     : 'bg-primary text-white hover:opacity-90 shadow-primary/20'
@@ -1096,7 +1095,6 @@ export default function Dashboard() {
               <span>Voice & Language Breakdown</span>
             </h2>
             <div className="space-y-4">
-              {/* Language split */}
               <div>
                 <span className="text-xs text-gray-400 font-bold uppercase tracking-wider block mb-2">Synthesized Languages</span>
                 <div className="space-y-2">
@@ -1118,7 +1116,6 @@ export default function Dashboard() {
                 </div>
               </div>
 
-              {/* Top Voices split */}
               <div className="pt-2">
                 <span className="text-xs text-gray-400 font-bold uppercase tracking-wider block mb-2">Top Voice Models</span>
                 <div className="flex flex-wrap gap-2">
@@ -1165,7 +1162,7 @@ export default function Dashboard() {
                   <button
                     key={mode.id}
                     onClick={() => setTelemetryMode(mode.id)}
-                    className={`text-[9px] uppercase font-bold tracking-wider px-2.5 py-1.5 rounded-md transition-all ${
+                    className={`text-[9px] uppercase font-bold tracking-wider px-2.5 py-1.5 rounded-md transition-all cursor-pointer ${
                       telemetryMode === mode.id
                         ? 'bg-primary text-white shadow-sm shadow-primary/10'
                         : 'text-gray-400 hover:text-white'
@@ -1276,18 +1273,17 @@ export default function Dashboard() {
                 </div>
               </div>
               
-              {/* Interactive tip controls */}
               <div className="flex items-center gap-1 shrink-0 self-center">
                 <button 
                   onClick={() => setInsightIndex((prev) => (prev - 1 + insights.length) % insights.length)}
-                  className="w-7 h-7 rounded-lg bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white flex items-center justify-center transition-colors"
+                  className="w-7 h-7 rounded-lg bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white flex items-center justify-center transition-colors cursor-pointer"
                   title="Previous Tip"
                 >
                   <ChevronLeft size={14} />
                 </button>
                 <button 
                   onClick={() => setInsightIndex((prev) => (prev + 1) % insights.length)}
-                  className="w-7 h-7 rounded-lg bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white flex items-center justify-center transition-colors"
+                  className="w-7 h-7 rounded-lg bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white flex items-center justify-center transition-colors cursor-pointer"
                   title="Next Tip"
                 >
                   <ChevronRight size={14} />
@@ -1325,7 +1321,7 @@ export default function Dashboard() {
             {recentSearch && (
               <button
                 onClick={() => setRecentSearch('')}
-                className="absolute right-3 top-2.5 text-gray-500 hover:text-white font-semibold text-xs"
+                className="absolute right-3 top-2.5 text-gray-500 hover:text-white font-semibold text-xs cursor-pointer"
               >
                 ×
               </button>
@@ -1373,7 +1369,7 @@ export default function Dashboard() {
                       <div className="flex items-center space-x-3 min-w-0 flex-1">
                         <button
                           onClick={() => handlePlayActivity(item)}
-                          className={`w-10 h-10 rounded-full flex flex-shrink-0 items-center justify-center transition-all duration-300 ${
+                          className={`w-10 h-10 rounded-full flex flex-shrink-0 items-center justify-center transition-all duration-300 cursor-pointer ${
                             isActive 
                               ? 'bg-red-500/20 text-red-500 border border-red-500/30'
                               : 'bg-primary/10 text-primary border border-primary/20 hover:bg-primary hover:text-white'
@@ -1390,7 +1386,6 @@ export default function Dashboard() {
                           <div className="flex items-center gap-2">
                             <h4 className="text-white font-semibold text-sm truncate">{item.title}</h4>
                             
-                            {/* Live animating soundwave */}
                             {isActive && (
                               <div className="flex items-end gap-[1.5px] h-3.5 shrink-0 mb-0.5">
                                 {[1, 2, 3, 4, 5].map((bar) => (
@@ -1414,10 +1409,9 @@ export default function Dashboard() {
                       </div>
                       
                       <div className="flex items-center gap-2 ml-2">
-                        {/* Direct Download Button */}
                         <button 
                           onClick={() => handleDownloadActivity(item)}
-                          className="w-8 h-8 rounded-lg bg-white/5 border border-white/10 hover:bg-primary/20 hover:text-primary text-gray-400 hover:text-white flex items-center justify-center transition-all shrink-0"
+                          className="w-8 h-8 rounded-lg bg-white/5 border border-white/10 hover:bg-primary/20 hover:text-primary text-gray-400 hover:text-white flex items-center justify-center transition-all shrink-0 cursor-pointer"
                           title="Download Audio MP3"
                         >
                           <Download size={13} />
@@ -1428,7 +1422,7 @@ export default function Dashboard() {
                             navigator.clipboard.writeText(item.text || "");
                             toast.success("Script copied!");
                           }}
-                          className="w-8 h-8 rounded-lg bg-white/5 border border-white/10 hover:bg-white/10 text-gray-400 hover:text-white flex items-center justify-center transition-all shrink-0"
+                          className="w-8 h-8 rounded-lg bg-white/5 border border-white/10 hover:bg-white/10 text-gray-400 hover:text-white flex items-center justify-center transition-all shrink-0 cursor-pointer"
                           title="Copy Script Text"
                         >
                           <Copy size={13} />
@@ -1436,7 +1430,6 @@ export default function Dashboard() {
                       </div>
                     </div>
 
-                    {/* Morphing circular visualizer for active output */}
                     {isActive && (
                       <div className="mt-3 h-20 w-full rounded-xl bg-black/35 border border-white/5 overflow-hidden flex items-center justify-center relative shadow-inner">
                         <div className="absolute inset-0 bg-primary/5 animate-pulse pointer-events-none"></div>
@@ -1451,7 +1444,6 @@ export default function Dashboard() {
                       </div>
                     )}
 
-                    {/* Upgraded expandable media seek bar, time display and speed controllers */}
                     {isActive && (
                       <div className="mt-3 pt-3 border-t border-white/5 space-y-3">
                         <div className="flex items-center gap-3">
@@ -1468,7 +1460,6 @@ export default function Dashboard() {
                           <span className="text-[10px] text-gray-400 font-mono shrink-0 w-8 text-right">{formatTime(duration)}</span>
                         </div>
 
-                        {/* Playback speed selector */}
                         <div className="flex items-center justify-between text-[10px] text-gray-400 font-bold uppercase tracking-wider font-mono">
                           <span>Playback Speed</span>
                           <div className="flex gap-1.5 bg-black/40 border border-white/5 p-0.5 rounded-lg">
@@ -1476,7 +1467,7 @@ export default function Dashboard() {
                               <button
                                 key={speed}
                                 onClick={() => handleSpeedChange(speed)}
-                                className={`px-2 py-1 rounded transition-all ${
+                                className={`px-2 py-1 rounded transition-all cursor-pointer ${
                                   playSpeed === speed 
                                     ? 'bg-primary text-white' 
                                     : 'hover:text-white text-gray-500'
